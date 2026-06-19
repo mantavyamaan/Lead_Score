@@ -4,7 +4,7 @@ It helps sales and marketing teams prioritize their efforts by focusing on the m
 
 This model extends and refines the reference framework into a production-grade system suitable for multinational corporations with complex sales cycles, multiple product lines, and global operations
 
-Every raw variable is normalised to x ̃∈[0,1]. Hard gates g_k∈{0,1}are binary kill switches. Soft modifiers m_j∈[0.5,1.0] apply penalties but never zero out a lead entirely. The final score lives on a 0–100 scale.
+Every raw variable is normalised to x ̃∈ [0,1]. Hard gates g_k ∈ {0,1}are binary kill switches. Soft modifiers m_j∈[0.5,1.0] apply penalties but never zero out a lead entirely. The final score lives on a 0–100 scale.
 
 
 
