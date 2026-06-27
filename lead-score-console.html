@@ -1,0 +1,1656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lead Score Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* ── base ── */
+  --ink:#14181C;
+  --ink-deep:#0E1115;
+  --panel:#1B2027;
+  --panel-raised:#212833;
+  --well:#10141A;
+  --border:#2A323C;
+  --border-soft:#232A33;
+
+  /* ── text ── */
+  --paper:#ECE7DC;
+  --paper-dim:#9CA6B2;
+  --paper-faint:#5C6470;
+
+  /* ── accents ── */
+  --brass:#D9A24B;
+  --brass-soft:rgba(217,162,75,.14);
+  --teal:#5FB8A8;
+  --teal-soft:rgba(95,184,168,.14);
+  --crimson:#C9554A;
+  --crimson-soft:rgba(201,85,74,.14);
+
+  /* ── parameter hues ── */
+  --p1:#D9A24B;
+  --p2:#5FB8A8;
+  --p3:#C97B84;
+  --p4:#7FA8C9;
+  --p5:#9CB68C;
+
+  /* ── verdict band hues (cold -> hot) ── */
+  --band0:#5B6472;
+  --band1:#7C93A8;
+  --band2:#5FB8A8;
+  --band3:#D9A24B;
+  --band4:#DD8A3E;
+
+  --r-sm:6px;
+  --r-md:10px;
+  --r-lg:16px;
+  --shadow:0 1px 0 rgba(255,255,255,.03) inset, 0 12px 30px -16px rgba(0,0,0,.6);
+}
+
+*,*::before,*::after{ box-sizing:border-box; }
+html{ color-scheme:dark; }
+body{
+  margin:0;
+  background:
+    radial-gradient(1100px 520px at 12% -8%, rgba(217,162,75,.06), transparent 60%),
+    radial-gradient(900px 480px at 100% 0%, rgba(95,184,168,.05), transparent 55%),
+    var(--ink);
+  color:var(--paper);
+  font-family:'Inter',system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  line-height:1.45;
+}
+h1,h2,h3,h4{ margin:0; font-family:'Space Grotesk',sans-serif; }
+p{ margin:0; }
+button{ font-family:inherit; }
+.mono{ font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums; }
+
+::selection{ background:var(--brass-soft); color:var(--paper); }
+
+a{ color:var(--brass); }
+
+/* focus ring */
+:focus-visible{
+  outline:2px solid var(--brass);
+  outline-offset:2px;
+  border-radius:4px;
+}
+
+/* ============ layout shell ============ */
+.shell{
+  max-width:1180px;
+  margin:0 auto;
+  padding:22px 22px 90px;
+}
+
+/* ============ header ============ */
+.console-header{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:20px;
+  flex-wrap:wrap;
+  padding-bottom:22px;
+  border-bottom:1px solid var(--border-soft);
+  margin-bottom:26px;
+}
+.brand-eyebrow{
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  color:var(--brass);
+  margin-bottom:6px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.brand-eyebrow .dot{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--teal);
+  box-shadow:0 0 0 3px var(--teal-soft);
+}
+.console-header h1{
+  font-size:26px;
+  font-weight:700;
+  letter-spacing:-.01em;
+  color:var(--paper);
+}
+.console-header .sub{
+  margin-top:6px;
+  font-size:13.5px;
+  color:var(--paper-dim);
+  max-width:46ch;
+}
+.header-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  align-items:flex-start;
+}
+.btn{
+  appearance:none;
+  border:1px solid var(--border);
+  background:var(--panel);
+  color:var(--paper);
+  font-size:12.5px;
+  font-weight:600;
+  letter-spacing:.01em;
+  padding:9px 14px;
+  border-radius:var(--r-sm);
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  transition:border-color .15s ease, transform .1s ease, background .15s ease;
+  white-space:nowrap;
+}
+.btn:hover{ border-color:var(--brass); background:var(--panel-raised); }
+.btn:active{ transform:translateY(1px); }
+.btn svg{ width:14px; height:14px; flex:none; }
+.btn--primary{ border-color:var(--brass); color:var(--ink); background:var(--brass); }
+.btn--primary:hover{ background:#e3ad58; }
+.btn--ghost{ background:transparent; }
+.file-btn{ position:relative; overflow:hidden; }
+.file-btn input[type=file]{
+  position:absolute; inset:0; opacity:0; cursor:pointer;
+}
+
+/* ============ hero / gauge ============ */
+.hero{
+  display:grid;
+  grid-template-columns:280px 1fr;
+  gap:28px;
+  align-items:center;
+  background:linear-gradient(180deg, var(--panel), var(--panel) 60%, var(--panel-raised));
+  border:1px solid var(--border);
+  border-radius:var(--r-lg);
+  padding:22px 26px;
+  box-shadow:var(--shadow);
+  position:relative;
+  overflow:hidden;
+}
+.hero::before{
+  content:"";
+  position:absolute; inset:0;
+  background:linear-gradient(120deg, transparent 40%, rgba(217,162,75,.035) 50%, transparent 60%);
+  pointer-events:none;
+}
+.gauge-wrap{ position:relative; }
+.gauge-wrap svg{ width:100%; height:auto; display:block; }
+.gauge-needle{
+  transform-box:fill-box;
+}
+@media (prefers-reduced-motion:no-preference){
+  #needle{ transition:transform .7s cubic-bezier(.22,1,.36,1); }
+  .fill-anim{ transition:width .5s ease, stroke-dashoffset .5s ease; }
+}
+.gauge-readout{
+  position:absolute; left:50%; bottom:14%;
+  transform:translateX(-50%);
+  text-align:center;
+}
+.gauge-score{
+  font-family:'Space Grotesk',sans-serif;
+  font-weight:700;
+  font-size:40px;
+  line-height:1;
+  letter-spacing:-.02em;
+  color:var(--paper);
+}
+.gauge-score .pt{ font-size:.5em; color:var(--paper-dim); font-weight:600; }
+.gauge-band-legend{
+  display:flex;
+  justify-content:center;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-top:2px;
+  font-size:9.5px;
+}
+.gauge-band-legend span{
+  display:inline-flex; align-items:center; gap:4px;
+  color:var(--paper-faint);
+  letter-spacing:.05em;
+  text-transform:uppercase;
+  font-family:'JetBrains Mono',monospace;
+}
+.gauge-band-legend i{ width:7px;height:7px;border-radius:2px; }
+
+.readout-col{ min-width:0; }
+.verdict-row{
+  display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  margin-bottom:10px;
+}
+.verdict-pill{
+  font-family:'JetBrains Mono',monospace;
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:.12em;
+  padding:6px 12px;
+  border-radius:999px;
+  border:1px solid currentColor;
+  text-transform:uppercase;
+}
+.weighted-note{
+  font-size:12.5px;
+  color:var(--paper-dim);
+}
+.disq-banner{
+  display:none;
+  align-items:flex-start;
+  gap:10px;
+  background:var(--crimson-soft);
+  border:1px solid var(--crimson);
+  color:#F3CFC9;
+  padding:11px 14px;
+  border-radius:var(--r-sm);
+  font-size:12.5px;
+  margin-bottom:12px;
+}
+.disq-banner.show{ display:flex; }
+.disq-banner svg{ width:16px; height:16px; flex:none; margin-top:1px; color:var(--crimson); }
+
+.formula-trace{
+  margin-top:14px;
+  background:var(--well);
+  border:1px solid var(--border-soft);
+  border-radius:var(--r-sm);
+  padding:11px 13px;
+  font-size:12px;
+  color:var(--paper-dim);
+  overflow-x:auto;
+  white-space:nowrap;
+}
+.formula-trace b{ color:var(--brass); font-weight:600; }
+.formula-trace .eq{ color:var(--paper-faint); margin:0 6px; }
+
+/* ============ gates & modifier ============ */
+.panel-title{
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  color:var(--paper-faint);
+  margin-bottom:12px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.panel-title::after{
+  content:"";
+  flex:1;
+  height:1px;
+  background:var(--border-soft);
+}
+
+.gates-panel{
+  margin-top:18px;
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:var(--r-lg);
+  padding:20px 22px;
+}
+.gates-row{
+  display:grid;
+  grid-template-columns:repeat(3,1fr) 1.4fr;
+  gap:16px;
+}
+.gate-switch{
+  background:var(--well);
+  border:1px solid var(--border-soft);
+  border-radius:var(--r-md);
+  padding:13px 14px;
+  transition:border-color .15s ease;
+}
+.gate-switch[data-state="fail"]{ border-color:var(--crimson); }
+.gate-switch[data-state="pass"]{ border-color:var(--border-soft); }
+.gate-head{
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  margin-bottom:6px;
+}
+.gate-code{
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px; letter-spacing:.1em; color:var(--paper-dim);
+}
+.gate-name{ font-size:13.5px; font-weight:600; color:var(--paper); margin-bottom:4px; }
+.gate-desc{ font-size:11.5px; color:var(--paper-faint); line-height:1.4; min-height:30px; }
+
+.switch{
+  --w:38px; --h:21px;
+  position:relative;
+  display:inline-block;
+  width:var(--w); height:var(--h);
+  flex:none;
+}
+.switch input{ position:absolute; opacity:0; width:100%; height:100%; margin:0; cursor:pointer; }
+.switch .track{
+  position:absolute; inset:0;
+  background:var(--crimson-soft);
+  border:1px solid var(--crimson);
+  border-radius:999px;
+  transition:background .15s ease, border-color .15s ease;
+}
+.switch .thumb{
+  position:absolute; top:2px; left:2px;
+  width:15px; height:15px; border-radius:50%;
+  background:var(--crimson);
+  transition:transform .18s cubic-bezier(.22,1,.36,1), background .15s ease;
+}
+.switch input:checked + .track{ background:var(--teal-soft); border-color:var(--teal); }
+.switch input:checked + .track + .thumb{ transform:translateX(17px); background:var(--teal); }
+.switch input:focus-visible + .track{ outline:2px solid var(--brass); outline-offset:2px; }
+
+.gate-state-label{
+  font-family:'JetBrains Mono',monospace;
+  font-size:10.5px;
+  font-weight:700;
+  letter-spacing:.08em;
+}
+
+.modifier-box{
+  background:var(--well);
+  border:1px solid var(--border-soft);
+  border-radius:var(--r-md);
+  padding:13px 16px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+.modifier-head{
+  display:flex; align-items:baseline; justify-content:space-between; gap:8px;
+  margin-bottom:8px;
+}
+.modifier-head .gate-name{ margin-bottom:0; }
+.modifier-value{
+  font-family:'JetBrains Mono',monospace;
+  font-weight:700; font-size:15px; color:var(--brass);
+}
+.modifier-band{
+  font-size:11px; color:var(--paper-faint); margin-top:6px;
+}
+
+/* ============ sliders / range inputs ============ */
+input[type=range]{
+  -webkit-appearance:none; appearance:none;
+  width:100%; height:20px;
+  background:transparent;
+  margin:0;
+  cursor:pointer;
+}
+input[type=range]::-webkit-slider-runnable-track{
+  height:6px; border-radius:999px;
+  background:linear-gradient(90deg, var(--track-fill,var(--brass)) 0%, var(--track-fill,var(--brass)) var(--pct,50%), var(--well) var(--pct,50%), var(--well) 100%);
+  border:1px solid var(--border-soft);
+}
+input[type=range]::-moz-range-track{
+  height:6px; border-radius:999px;
+  background:var(--well);
+  border:1px solid var(--border-soft);
+}
+input[type=range]::-moz-range-progress{
+  height:6px; border-radius:999px;
+  background:var(--track-fill,var(--brass));
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:16px; height:16px; border-radius:50%;
+  background:var(--paper);
+  border:3px solid var(--track-fill,var(--brass));
+  margin-top:-6px;
+  box-shadow:0 1px 3px rgba(0,0,0,.5);
+  transition:transform .1s ease;
+}
+input[type=range]::-webkit-slider-thumb:hover{ transform:scale(1.12); }
+input[type=range]::-moz-range-thumb{
+  width:16px; height:16px; border-radius:50%;
+  background:var(--paper);
+  border:3px solid var(--track-fill,var(--brass));
+  box-shadow:0 1px 3px rgba(0,0,0,.5);
+}
+
+/* ============ analysis row ============ */
+.analysis-row{
+  display:grid;
+  grid-template-columns:1.55fr 1fr;
+  gap:18px;
+  margin-top:18px;
+}
+.card{
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:var(--r-lg);
+  padding:20px 22px;
+}
+.contrib-bar-track{
+  display:flex;
+  height:30px;
+  border-radius:var(--r-sm);
+  overflow:hidden;
+  background:var(--well);
+  border:1px solid var(--border-soft);
+}
+.contrib-seg{
+  height:100%;
+  min-width:0;
+  transition:width .5s ease;
+  position:relative;
+}
+.contrib-seg .seg-label{
+  position:absolute; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px; font-weight:700;
+  color:rgba(14,17,21,.78);
+  opacity:0;
+  transition:opacity .15s ease;
+}
+.contrib-seg:hover .seg-label{ opacity:1; }
+.contrib-seg.headroom{ background:transparent; }
+.contrib-legend{
+  display:flex; flex-wrap:wrap; gap:10px 16px;
+  margin-top:14px;
+}
+.legend-item{
+  display:flex; align-items:center; gap:7px;
+  font-size:12px; color:var(--paper-dim);
+}
+.legend-item i{ width:9px; height:9px; border-radius:2px; flex:none; }
+.legend-item b{ color:var(--paper); font-weight:600; }
+.legend-item .val{ font-family:'JetBrains Mono',monospace; color:var(--paper-faint); margin-left:2px; }
+
+.radar-card svg{ width:100%; height:auto; display:block; }
+.radar-legend{
+  display:grid; grid-template-columns:1fr 1fr; gap:6px 14px;
+  margin-top:10px;
+}
+
+/* ============ parameter modules ============ */
+.modules{ margin-top:26px; display:flex; flex-direction:column; gap:16px; }
+
+.module{
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-left:4px solid var(--accent,var(--brass));
+  border-radius:var(--r-lg);
+  overflow:hidden;
+}
+.module-header{
+  display:flex; align-items:center; gap:14px;
+  padding:16px 20px;
+  cursor:pointer;
+  user-select:none;
+  background:var(--panel-raised);
+}
+.module-code{
+  font-family:'Space Grotesk',sans-serif;
+  font-weight:700; font-size:18px;
+  color:var(--accent,var(--brass));
+  width:34px; flex:none;
+}
+.module-titles{ flex:1; min-width:0; }
+.module-titles h3{
+  font-size:15.5px; font-weight:600; color:var(--paper);
+  display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;
+}
+.module-titles .tagline{ font-size:12px; font-weight:400; color:var(--paper-faint); font-family:'Inter',sans-serif; }
+.module-meta{
+  display:flex; align-items:center; gap:18px;
+  flex:none;
+}
+.meta-block{ text-align:right; }
+.meta-block .label{
+  font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:.1em;
+  color:var(--paper-faint); text-transform:uppercase;
+}
+.meta-block .value{
+  font-family:'JetBrains Mono',monospace; font-size:15px; font-weight:700;
+  color:var(--paper);
+}
+.module-minibar{
+  width:64px; height:5px; border-radius:999px; background:var(--well);
+  overflow:hidden; margin-top:5px;
+  border:1px solid var(--border-soft);
+}
+.module-minibar i{
+  display:block; height:100%; background:var(--accent,var(--brass));
+  transition:width .5s ease; width:0%;
+}
+.chev{
+  width:18px; height:18px; flex:none; color:var(--paper-faint);
+  transition:transform .2s ease;
+}
+.module.collapsed .chev{ transform:rotate(-90deg); }
+.module.collapsed .module-body{ display:none; }
+
+.module-body{ padding:20px 22px 22px; }
+.field-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:18px 26px;
+}
+.field{ min-width:0; transition:opacity .2s ease; }
+.field--inactive{ opacity:.42; }
+.field-label-row{
+  display:flex; align-items:baseline; justify-content:space-between; gap:10px;
+  margin-bottom:5px;
+}
+.field-label{ font-size:13px; font-weight:600; color:var(--paper); }
+.field-caption{ font-size:11.5px; color:var(--paper-faint); margin-top:3px; line-height:1.4; }
+.field-value-box{
+  display:flex; align-items:center; gap:3px;
+  flex:none;
+}
+.field-value-box input[type=number]{
+  width:64px;
+  background:var(--well);
+  border:1px solid var(--border-soft);
+  border-radius:5px;
+  color:var(--paper);
+  font-family:'JetBrains Mono',monospace;
+  font-size:12.5px;
+  text-align:right;
+  padding:4px 6px;
+}
+.field-value-box .unit{
+  font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--paper-faint);
+}
+.field--number .field-value-box input[type=number]{ width:96px; }
+
+.toggle-row{
+  display:flex; align-items:center; gap:10px;
+  background:var(--well);
+  border:1px solid var(--border-soft);
+  border-radius:var(--r-sm);
+  padding:10px 12px;
+}
+.toggle-row .switch{ flex:none; }
+.toggle-state-text{
+  font-family:'JetBrains Mono',monospace; font-size:11.5px; font-weight:600;
+  color:var(--paper-dim);
+}
+
+.trace-details{ margin-top:16px; }
+.trace-summary{
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px; letter-spacing:.06em;
+  color:var(--paper-faint);
+  cursor:pointer;
+  list-style:none;
+  display:flex; align-items:center; gap:6px;
+}
+.trace-summary::-webkit-details-marker{ display:none; }
+.trace-summary::before{
+  content:"▸"; display:inline-block; transition:transform .15s ease; color:var(--brass);
+}
+details[open] > .trace-summary::before{ transform:rotate(90deg); }
+.trace-grid{
+  margin-top:10px;
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:8px 16px;
+  background:var(--well);
+  border:1px solid var(--border-soft);
+  border-radius:var(--r-sm);
+  padding:12px 14px;
+}
+.trace-item{ font-size:11.5px; }
+.trace-item .k{ color:var(--paper-faint); }
+.trace-item .v{ font-family:'JetBrains Mono',monospace; color:var(--paper); font-weight:600; }
+
+/* ============ footer ============ */
+.footer-note{
+  margin-top:30px;
+  padding-top:18px;
+  border-top:1px solid var(--border-soft);
+  font-size:12px;
+  color:var(--paper-faint);
+  display:flex; justify-content:space-between; gap:14px; flex-wrap:wrap;
+}
+.footer-note code{
+  font-family:'JetBrains Mono',monospace; color:var(--paper-dim);
+}
+
+/* ============ toast ============ */
+.toast{
+  position:fixed; left:50%; bottom:26px; transform:translate(-50%,12px);
+  background:var(--panel-raised); border:1px solid var(--brass);
+  color:var(--paper); padding:10px 16px; border-radius:var(--r-sm);
+  font-size:12.5px; font-weight:600;
+  opacity:0; pointer-events:none;
+  transition:opacity .2s ease, transform .2s ease;
+  z-index:50;
+  box-shadow:0 10px 30px -10px rgba(0,0,0,.6);
+}
+.toast.show{ opacity:1; transform:translate(-50%,0); }
+
+/* ============ responsive ============ */
+@media (max-width:860px){
+  .hero{ grid-template-columns:1fr; }
+  .gauge-wrap{ max-width:280px; margin:0 auto; }
+  .gates-row{ grid-template-columns:1fr 1fr; }
+  .analysis-row{ grid-template-columns:1fr; }
+  .field-grid{ grid-template-columns:1fr; }
+}
+@media (max-width:560px){
+  .shell{ padding:16px 14px 70px; }
+  .console-header{ flex-direction:column; }
+  .gates-row{ grid-template-columns:1fr; }
+  .module-header{ flex-wrap:wrap; }
+  .module-meta{ width:100%; justify-content:space-between; order:3; margin-top:4px; }
+  .console-header h1{ font-size:22px; }
+}
+
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <header class="console-header">
+    <div>
+      <div class="brand-eyebrow"><span class="dot"></span>DEAL QUALIFICATION INSTRUMENT</div>
+      <h1>Lead Score Console</h1>
+      <p class="sub">Adjust any input and the score recalculates instantly — same formula as the model notebook, including the Bayesian credible-interval and decay-pressure helpers.</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn" id="btnRandomize" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/></svg>
+        Randomize
+      </button>
+      <button class="btn" id="btnReset" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+        Reset to sample
+      </button>
+      <button class="btn" id="btnCopy" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+        Copy summary
+      </button>
+      <button class="btn" id="btnExport" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+        Export scenario
+      </button>
+      <button class="btn file-btn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V9"/><path d="m7 14 5-5 5 5"/><path d="M5 3h14"/></svg>
+        Import scenario
+        <input type="file" id="fileImport" accept="application/json">
+      </button>
+    </div>
+  </header>
+
+  <!-- ============ HERO: GAUGE + READOUT ============ -->
+  <section class="hero">
+    <div class="gauge-wrap">
+      <svg viewBox="0 0 300 260" aria-hidden="true">
+        <path d="M 66.77 232.94 A 112 112 0 1 1 233.23 232.94" fill="none" stroke="var(--well)" stroke-width="22" stroke-linecap="round"/>
+        <path d="M 66.77 232.94 A 112 112 0 0 1 38.01 159.47" fill="none" stroke="var(--band0)" stroke-width="20" stroke-linecap="round" opacity=".9"/>
+        <path d="M 38.01 159.47 A 112 112 0 0 1 64.83 85.26"  fill="none" stroke="var(--band1)" stroke-width="20" opacity=".9"/>
+        <path d="M 64.83 85.26 A 112 112 0 0 1 150.00 46.00"  fill="none" stroke="var(--band2)" stroke-width="20" opacity=".9"/>
+        <path d="M 150.00 46.00 A 112 112 0 0 1 244.72 98.24" fill="none" stroke="var(--band3)" stroke-width="20" opacity=".9"/>
+        <path d="M 244.72 98.24 A 112 112 0 0 1 233.23 232.94" fill="none" stroke="var(--band4)" stroke-width="20" stroke-linecap="round" opacity=".9"/>
+
+        <text x="53" y="248" class="mono" font-size="10" fill="var(--paper-faint)" text-anchor="middle">0</text>
+        <text x="247" y="248" class="mono" font-size="10" fill="var(--paper-faint)" text-anchor="middle">160</text>
+        <text x="150" y="40" class="mono" font-size="9" fill="var(--paper-faint)" text-anchor="middle">SCORE</text>
+
+        <g id="needleGroup" transform="rotate(-132 150 158)">
+          <polygon points="150,66 153.4,150 150,178 146.6,150" fill="var(--brass)"/>
+          <circle cx="150" cy="158" r="10" fill="var(--ink-deep)" stroke="var(--brass)" stroke-width="2.5"/>
+        </g>
+      </svg>
+      <div class="gauge-readout">
+        <div class="gauge-score mono" id="scoreNumber">0<span class="pt">.00</span></div>
+      </div>
+      <div class="gauge-band-legend">
+        <span><i style="background:var(--band0)"></i>Cold</span>
+        <span><i style="background:var(--band1)"></i>Developing</span>
+        <span><i style="background:var(--band2)"></i>Qualified</span>
+        <span><i style="background:var(--band3)"></i>Strong</span>
+        <span><i style="background:var(--band4)"></i>Exceptional</span>
+      </div>
+    </div>
+
+    <div class="readout-col">
+      <div class="disq-banner" id="disqBanner">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5"/><path d="M12 16h.01"/></svg>
+        <div><strong>Gate failed — score forced to zero.</strong> <span id="disqDetail">Gates are knockout conditions: while any one fails, no amount of fit, power, or momentum can offset it. The five parameter scores below are still shown for reference.</span></div>
+      </div>
+      <div class="verdict-row">
+        <span class="verdict-pill" id="verdictPill">QUALIFIED</span>
+        <span class="weighted-note">weighted sum Σ wᵢLᵢ = <b class="mono" id="weightedSumVal">0.000</b></span>
+      </div>
+      <p class="weighted-note" id="verdictCopy">A healthy, fundable deal with a clear path to close — worth active investment this cycle.</p>
+
+      <div class="formula-trace mono" id="formulaTrace">
+        S&nbsp;=&nbsp;100&nbsp;×&nbsp;<b>G</b><span class="eq">(<span id="trG">1</span>)</span>&nbsp;×&nbsp;<b>M</b><span class="eq">(<span id="trM">0.90</span>)</span>&nbsp;×&nbsp;<b>Σwᵢ Lᵢ</b><span class="eq">(<span id="trWS">0.869</span>)</span>&nbsp;=&nbsp;<b id="trScore" style="color:var(--brass)">78.21</b>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ GATES & MODIFIER ============ -->
+  <section class="gates-panel">
+    <div class="panel-title">Gates &amp; deal friction — global multipliers</div>
+    <div class="gates-row" id="gatesRow">
+      <!-- gate switches injected by JS -->
+      <div class="modifier-box">
+        <div class="modifier-head">
+          <div>
+            <div class="gate-code">M</div>
+            <div class="gate-name">Deal friction modifier</div>
+          </div>
+          <div class="modifier-value mono" id="modifierVal">0.90</div>
+        </div>
+        <input type="range" id="modifierSlider" min="0.5" max="1" step="0.01" value="0.9" style="--track-fill:var(--brass)">
+        <div class="modifier-band" id="modifierBand">Some friction — complex procurement, manageable</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ANALYSIS: CONTRIBUTION BAR + RADAR ============ -->
+  <section class="analysis-row">
+    <div class="card">
+      <div class="panel-title">Score composition — who's pulling the needle</div>
+      <div class="contrib-bar-track" id="contribBar"></div>
+      <div class="contrib-legend" id="contribLegend"></div>
+    </div>
+    <div class="card radar-card">
+      <div class="panel-title">Shape of the deal</div>
+      <svg viewBox="0 0 260 230" aria-hidden="true">
+        <polygon points="130.0,97.0 151.9,112.9 143.5,138.6 116.5,138.6 108.1,112.9" fill="none" stroke="var(--border)" stroke-width="1"/>
+        <polygon points="130.0,74.0 173.7,105.8 157.0,157.2 103.0,157.2 86.3,105.8" fill="none" stroke="var(--border)" stroke-width="1"/>
+        <polygon points="130.0,51.0 195.6,98.7 170.6,175.8 89.4,175.8 64.4,98.7" fill="none" stroke="var(--border)" stroke-width="1"/>
+        <polygon points="130.0,28.0 217.5,91.6 184.1,194.4 75.9,194.4 42.5,91.6" fill="none" stroke="var(--border-soft)" stroke-width="1.2"/>
+        <line x1="130" y1="120" x2="130.0" y2="28.0" stroke="var(--border-soft)" stroke-width="1"/>
+        <line x1="130" y1="120" x2="217.5" y2="91.6" stroke="var(--border-soft)" stroke-width="1"/>
+        <line x1="130" y1="120" x2="184.1" y2="194.4" stroke="var(--border-soft)" stroke-width="1"/>
+        <line x1="130" y1="120" x2="75.9" y2="194.4" stroke="var(--border-soft)" stroke-width="1"/>
+        <line x1="130" y1="120" x2="42.5" y2="91.6" stroke="var(--border-soft)" stroke-width="1"/>
+        <polygon id="radarPoly" points="130,28 217.5,91.6 184.1,194.4 75.9,194.4 42.5,91.6" fill="rgba(217,162,75,.22)" stroke="var(--brass)" stroke-width="2" stroke-linejoin="round"/>
+        <g id="radarDots"></g>
+        <text x="130.0" y="10.0" class="mono" font-size="11" font-weight="700" fill="var(--p1)" text-anchor="middle">P1</text>
+        <text x="234.6" y="86.0" class="mono" font-size="11" font-weight="700" fill="var(--p2)" text-anchor="middle">P2</text>
+        <text x="194.7" y="213.0" class="mono" font-size="11" font-weight="700" fill="var(--p3)" text-anchor="middle">P3</text>
+        <text x="65.3" y="213.0" class="mono" font-size="11" font-weight="700" fill="var(--p4)" text-anchor="middle">P4</text>
+        <text x="25.4" y="86.0" class="mono" font-size="11" font-weight="700" fill="var(--p5)" text-anchor="middle">P5</text>
+      </svg>
+      <div class="radar-legend" id="radarLegend"></div>
+    </div>
+  </section>
+
+  <!-- ============ PARAMETER MODULES ============ -->
+  <section class="modules" id="modulesRoot">
+    <!-- five .module blocks injected by JS (header chrome is templated, fields are data-driven) -->
+  </section>
+
+  <div class="footer-note">
+    <span>Formula: <code>S = 100 · G · M · Σ wᵢLᵢ</code>, where <code>Lᵢ = ln(1 + Rᵢ)</code> — unbounded, diminishing returns, gate-aware.</span>
+    <span>Built from your scoring notebook · runs entirely in this page, nothing leaves your browser.</span>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ====================================================================
+   LEAD SCORE CONSOLE — application logic
+   Math engine ports the scoring notebook exactly (bci / edp / lognorm,
+   P1..P5, gates, modifier, final score) — verified against the source
+   notebook's own printed output before shipping.
+   ==================================================================== */
+
+(function () {
+  "use strict";
+
+  /* ---------------------------------------------------------------- */
+  /*  numerical helpers                                                */
+  /* ---------------------------------------------------------------- */
+
+  function logGamma(x) {
+    var g = 7;
+    var coef = [
+      0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+      771.32342877765313, -176.61502916214059, 12.507343278686905,
+      -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7
+    ];
+    if (x < 0.5) return Math.log(Math.PI / Math.sin(Math.PI * x)) - logGamma(1 - x);
+    x -= 1;
+    var a = coef[0];
+    var t = x + g + 0.5;
+    for (var i = 1; i < g + 2; i++) a += coef[i] / (x + i);
+    return 0.5 * Math.log(2 * Math.PI) + (x + 0.5) * Math.log(t) - t + Math.log(a);
+  }
+
+  function betacf(x, a, b) {
+    var MAXIT = 200, EPS = 3e-12, FPMIN = 1e-300;
+    var qab = a + b, qap = a + 1, qam = a - 1;
+    var c = 1.0;
+    var d = 1.0 - (qab * x) / qap;
+    if (Math.abs(d) < FPMIN) d = FPMIN;
+    d = 1.0 / d;
+    var h = d;
+    for (var m = 1; m <= MAXIT; m++) {
+      var m2 = 2 * m;
+      var aa = (m * (b - m) * x) / ((qam + m2) * (a + m2));
+      d = 1.0 + aa * d; if (Math.abs(d) < FPMIN) d = FPMIN;
+      c = 1.0 + aa / c; if (Math.abs(c) < FPMIN) c = FPMIN;
+      d = 1.0 / d; h *= d * c;
+      aa = (-(a + m) * (qab + m) * x) / ((a + m2) * (qap + m2));
+      d = 1.0 + aa * d; if (Math.abs(d) < FPMIN) d = FPMIN;
+      c = 1.0 + aa / c; if (Math.abs(c) < FPMIN) c = FPMIN;
+      d = 1.0 / d;
+      var de = d * c; h *= de;
+      if (Math.abs(de - 1.0) < EPS) break;
+    }
+    return h;
+  }
+
+  function betai(x, a, b) {
+    if (x <= 0) return 0.0;
+    if (x >= 1) return 1.0;
+    var bt = Math.exp(logGamma(a + b) - logGamma(a) - logGamma(b) + a * Math.log(x) + b * Math.log(1 - x));
+    if (x < (a + 1) / (a + b + 2)) return (bt * betacf(x, a, b)) / a;
+    return 1.0 - (bt * betacf(1 - x, b, a)) / b;
+  }
+
+  function betaPPF(p, a, b) {
+    var lo = 0.0, hi = 1.0;
+    for (var i = 0; i < 200; i++) {
+      var mid = (lo + hi) / 2;
+      var v = betai(mid, a, b);
+      if (v < p) lo = mid; else hi = mid;
+      if (hi - lo < 1e-10) break;
+    }
+    return (lo + hi) / 2;
+  }
+
+  function bci(successes, trials, confidence) {
+    confidence = confidence === undefined ? 0.05 : confidence;
+    if (trials <= 0) return 0.0;
+    return betaPPF(confidence, successes + 1, trials - successes + 1);
+  }
+
+  function edp(x, k) { return Math.exp(-k * x); }
+
+  function lognorm(count, cap) {
+    if (cap <= 0) return 0.0;
+    return Math.min(Math.log(1 + count) / Math.log(1 + cap), 1.0);
+  }
+
+  /* ---------------------------------------------------------------- */
+  /*  P1..P5                                                           */
+  /* ---------------------------------------------------------------- */
+
+  function computeP1(p) {
+    var Br = p.budget / p.deal_value;
+    var details = {};
+    var Cadj;
+    if (p.use_evidence && p.n_similar_deals > 0) {
+      var Cevidence = bci(p.n_confirmed_budget, p.n_similar_deals);
+      Cadj = 0.5 * p.budget_confirmation + 0.5 * Cevidence;
+      details.C_evidence = Cevidence;
+    } else {
+      Cadj = p.budget_confirmation;
+    }
+    var R1 = Br * (0.6 * Cadj + 0.4 * p.funding_security);
+    var L1 = Math.log(1 + R1);
+    details.Br = Br; details.C_adj = Cadj; details.R1 = R1; details.L1 = L1;
+    return { L: L1, details: details };
+  }
+
+  function computeP2(p) {
+    var Tadj = p.n_features_available / Math.max(p.n_features_needed, 1);
+    var Metrics = 0.40 * p.roi_quantified + 0.35 * p.metric_agreed + 0.25 * p.cost_of_inaction;
+    var Fcore = 0.25 * p.solution_fit + 0.20 * p.problem_clarity + 0.20 * Tadj + 0.15 * p.dissatisfaction + 0.20 * Metrics;
+    var R2 = Fcore * (1 + 0.5 * p.icp_match);
+    var L2 = Math.log(1 + R2);
+    return { L: L2, details: { Tadj: Tadj, Metrics: Metrics, Fcore: Fcore, R2: R2, L2: L2 } };
+  }
+
+  function computeP3(p) {
+    var A = p.seniority * p.decision_involvement;
+    var Nscore = lognorm(p.n_stakeholders, 5);
+    var Champ = p.champion_identified * (0.50 * p.champion_strength + 0.50 * p.champion_active);
+    var EB = p.econ_buyer_identified * p.econ_buyer_engaged;
+    var blend = 0.30 * A + 0.30 * Champ + 0.20 * EB + 0.20 * p.org_alignment;
+    var R3 = blend * (1 + Nscore) * (0.5 + 0.5 * p.access_to_power);
+    var L3 = Math.log(1 + R3);
+    return { L: L3, details: { A: A, Nscore: Nscore, Champ: Champ, EB: EB, blend: blend, R3: R3, L3: L3 } };
+  }
+
+  function computeP4(p) {
+    var Tprime = edp(p.days_to_decision, 0.015);
+    var Enorm = p.engagement_score / 10.0;
+    var Vbonus = Math.max(p.velocity - 1.0, 0.0);
+    var DProc = 0.40 * p.decision_process_mapped + 0.35 * p.procurement_stage + 0.25 * p.paper_process_clear;
+    var R4 = (Tprime + Enorm + Vbonus + DProc) * (1 + 0.5 * p.next_step_defined + 0.5 * p.trigger_event);
+    var L4 = Math.log(1 + R4);
+    return { L: L4, details: { Tprime: Tprime, Enorm: Enorm, Vbonus: Vbonus, DProc: DProc, R4: R4, L4: L4 } };
+  }
+
+  function computeP5(p) {
+    var R5, details;
+    if (p.sole_vendor === 1) {
+      R5 = 2.0 * (0.5 * p.differentiation + 0.5 * p.relationship_strength);
+      details = { mode: "Sole vendor", R5: R5 };
+    } else {
+      var Cpress = edp(p.n_competitors, 0.18);
+      var Wadj;
+      if (p.use_win_evidence && p.n_competitive_deals > 5) {
+        Wadj = bci(p.n_wins, p.n_competitive_deals);
+      } else {
+        Wadj = p.win_rate;
+      }
+      R5 = 0.30 * Wadj + 0.30 * p.differentiation + 0.20 * p.relationship_strength + 0.20 * Cpress;
+      details = { mode: "Competitive", Cpress: Cpress, Wadj: Wadj, R5: R5 };
+    }
+    var L5 = Math.log(1 + R5);
+    details.L5 = L5;
+    return { L: L5, details: details };
+  }
+
+  var WEIGHTS = { L1: 0.25, L2: 0.20, L3: 0.25, L4: 0.20, L5: 0.10 };
+  var GAUGE_MAX = 160;
+  var RADAR_REF = { L1: 1.4, L2: 1.0, L3: 1.1, L4: 2.4, L5: 1.1 };
+
+  function computeFinalScore(p) {
+    var G = (p.gate1 && p.gate2 && p.gate3) ? 1 : 0;
+    var M = Math.max(0.5, Math.min(1.0, p.modifier));
+    var p1 = computeP1(p), p2 = computeP2(p), p3 = computeP3(p), p4 = computeP4(p), p5 = computeP5(p);
+    var weightedSum = WEIGHTS.L1 * p1.L + WEIGHTS.L2 * p2.L + WEIGHTS.L3 * p3.L + WEIGHTS.L4 * p4.L + WEIGHTS.L5 * p5.L;
+    var score = 100 * G * M * weightedSum;
+    return {
+      G: G, M: M, weightedSum: weightedSum, score: score,
+      p1: p1, p2: p2, p3: p3, p4: p4, p5: p5,
+      contributions: {
+        p1: 100 * G * M * WEIGHTS.L1 * p1.L,
+        p2: 100 * G * M * WEIGHTS.L2 * p2.L,
+        p3: 100 * G * M * WEIGHTS.L3 * p3.L,
+        p4: 100 * G * M * WEIGHTS.L4 * p4.L,
+        p5: 100 * G * M * WEIGHTS.L5 * p5.L
+      }
+    };
+  }
+
+  /* ---------------------------------------------------------------- */
+  /*  defaults                                                         */
+  /* ---------------------------------------------------------------- */
+
+  var DEFAULTS = {
+    budget: 50000, deal_value: 45000, budget_confirmation: 0.75, funding_security: 0.7,
+    use_evidence: true, n_confirmed_budget: 8, n_similar_deals: 12,
+
+    solution_fit: 0.9, problem_clarity: 0.7, n_features_available: 17, n_features_needed: 20,
+    dissatisfaction: 0.6, icp_match: 0.85, roi_quantified: 0.7, metric_agreed: 0.6, cost_of_inaction: 0.5,
+
+    seniority: 0.8, decision_involvement: 1.0, n_stakeholders: 4, org_alignment: 0.8, access_to_power: 0.7,
+    champion_identified: 1, champion_strength: 0.75, champion_active: 0.8,
+    econ_buyer_identified: 1, econ_buyer_engaged: 0.65,
+
+    days_to_decision: 45, engagement_score: 7.0, velocity: 1.5, next_step_defined: 1, trigger_event: 1,
+    decision_process_mapped: 0.7, procurement_stage: 0.4, paper_process_clear: 0.5,
+
+    win_rate: 0.6, differentiation: 0.8, relationship_strength: 0.7, n_competitors: 3, sole_vendor: 0,
+    use_win_evidence: true, n_competitive_deals: 30, n_wins: 18,
+
+    gate1: true, gate2: true, gate3: true, modifier: 0.9
+  };
+
+  var state = JSON.parse(JSON.stringify(DEFAULTS));
+
+  /* ---------------------------------------------------------------- */
+  /*  field configuration (drives the generated form)                  */
+  /* ---------------------------------------------------------------- */
+
+  var MODULES = [
+    {
+      id: "p1", code: "P1", name: "Money", tagline: "Can they pay?", weight: 0.25, accent: "--p1",
+      fields: [
+        { key: "budget", label: "Budget", type: "number", min: 0, max: 100000000, step: 1000, unit: "₹", help: "Total budget the buyer has allocated or can realistically spend." },
+        { key: "deal_value", label: "Deal value", type: "number", min: 1, max: 100000000, step: 1000, unit: "₹", help: "Expected contract value or selling price of this specific deal." },
+        { key: "budget_confirmation", label: "Budget confirmation", type: "slider", help: "Confidence the budget is explicitly confirmed and usable for this deal." },
+        { key: "funding_security", label: "Funding security", type: "slider", help: "Stability of the funding source behind the deal." },
+        { key: "use_evidence", label: "Blend in historical evidence", type: "toggle", on: "BCI blended", off: "Stated only", help: "Adds a conservative Bayesian estimate from past deals to the confirmation level." },
+        { key: "n_confirmed_budget", label: "Confirmed-budget deals", type: "number", min: 0, max: 500, step: 1, unit: "of sample", help: "Past opportunities with clearly confirmed budget, used as evidence.", dependsOn: function (s) { return s.use_evidence; } },
+        { key: "n_similar_deals", label: "Similar deals sampled", type: "number", min: 0, max: 500, step: 1, unit: "deals", help: "Comparable historical deals used to benchmark budget fit.", dependsOn: function (s) { return s.use_evidence; } }
+      ],
+      trace: [
+        { k: "Br", label: "Budget ratio Bᵣ = B/D" },
+        { k: "C_evidence", label: "BCI evidence", optional: true },
+        { k: "C_adj", label: "Confirmation C_adj" },
+        { k: "R1", label: "Raw score R₁" },
+        { k: "L1", label: "Log-point L₁" }
+      ]
+    },
+    {
+      id: "p2", code: "P2", name: "Fit", tagline: "Does our product solve their problem?", weight: 0.20, accent: "--p2",
+      fields: [
+        { key: "solution_fit", label: "Solution fit", type: "slider", help: "How well your product solves the customer's actual use case." },
+        { key: "problem_clarity", label: "Problem clarity", type: "slider", help: "How clearly the customer understands the problem they need to solve." },
+        { key: "n_features_available", label: "Features available", type: "number", min: 0, max: 200, step: 1, unit: "of needed", help: "Required features your product already supports." },
+        { key: "n_features_needed", label: "Features needed", type: "number", min: 1, max: 200, step: 1, unit: "total", help: "Important features the customer expects for a workable solution." },
+        { key: "dissatisfaction", label: "Dissatisfaction with status quo", type: "slider", help: "How unhappy the prospect is with what they currently use." },
+        { key: "icp_match", label: "ICP match", type: "slider", help: "How closely this account matches your ideal customer profile." },
+        { key: "roi_quantified", label: "ROI quantified", type: "slider", help: "How well the financial return has been calculated with the buyer." },
+        { key: "metric_agreed", label: "Success metric agreed", type: "slider", help: "Degree to which you and the customer agree on what defines value." },
+        { key: "cost_of_inaction", label: "Cost of inaction", type: "slider", help: "How clearly the downside of doing nothing has been accepted." }
+      ],
+      trace: [
+        { k: "Tadj", label: "Technical coverage T_adj" },
+        { k: "Metrics", label: "Metrics composite" },
+        { k: "Fcore", label: "Core fit F_core" },
+        { k: "R2", label: "Raw score R₂" },
+        { k: "L2", label: "Log-point L₂" }
+      ]
+    },
+    {
+      id: "p3", code: "P3", name: "Power", tagline: "Are we talking to the decision-maker?", weight: 0.25, accent: "--p3",
+      fields: [
+        { key: "seniority", label: "Contact seniority", type: "slider", help: "Relative organizational seniority of your main contact." },
+        { key: "decision_involvement", label: "Decision involvement", type: "slider", help: "How directly the contact participates in approval." },
+        { key: "n_stakeholders", label: "Stakeholders identified", type: "number", min: 0, max: 30, step: 1, unit: "people", help: "People meaningfully involved in approving the deal — diminishing returns past ~5." },
+        { key: "org_alignment", label: "Org alignment", type: "slider", help: "Level of internal agreement that the priority is legitimate." },
+        { key: "access_to_power", label: "Access to decision-maker", type: "slider", help: "Quality of your access to the real budget holder." },
+        { key: "champion_identified", label: "Champion identified", type: "toggle", on: "Identified", off: "None yet", help: "Whether a true internal champion has been clearly identified." },
+        { key: "champion_strength", label: "Champion strength", type: "slider", help: "How credible and influential that champion is inside the account.", dependsOn: function (s) { return s.champion_identified === 1; } },
+        { key: "champion_active", label: "Champion active", type: "slider", help: "How actively the champion is driving next steps internally.", dependsOn: function (s) { return s.champion_identified === 1; } },
+        { key: "econ_buyer_identified", label: "Economic buyer identified", type: "toggle", on: "Identified", off: "Unknown", help: "Whether the person who can truly approve spending is known." },
+        { key: "econ_buyer_engaged", label: "Economic buyer engaged", type: "slider", help: "How directly the economic buyer is informed and responsive.", dependsOn: function (s) { return s.econ_buyer_identified === 1; } }
+      ],
+      trace: [
+        { k: "A", label: "Authority A" },
+        { k: "Nscore", label: "Stakeholder breadth N_score" },
+        { k: "Champ", label: "Champion score" },
+        { k: "EB", label: "Economic buyer score" },
+        { k: "blend", label: "Authority blend" },
+        { k: "R3", label: "Raw score R₃" },
+        { k: "L3", label: "Log-point L₃" }
+      ]
+    },
+    {
+      id: "p4", code: "P4", name: "Momentum", tagline: "Is this deal moving forward?", weight: 0.20, accent: "--p4",
+      fields: [
+        { key: "days_to_decision", label: "Days until decision", type: "number", min: 0, max: 365, step: 1, unit: "days", help: "Expected number of days until the customer is likely to decide." },
+        { key: "engagement_score", label: "Engagement score", type: "slider", min: 0, max: 10, step: 0.1, help: "Composite of meeting quality, responsiveness and activity (0–10)." },
+        { key: "velocity", label: "Velocity", type: "slider", min: 0, max: 3, step: 0.1, help: "Speed of progress; 1.0 = steady, above 1 = accelerating." },
+        { key: "next_step_defined", label: "Next step defined", type: "toggle", on: "Defined", off: "Not set", help: "A clear, mutually agreed next action with ownership and timing." },
+        { key: "trigger_event", label: "Trigger event", type: "toggle", on: "Active", off: "None", help: "A business event forcing or motivating a decision." },
+        { key: "decision_process_mapped", label: "Decision process mapped", type: "slider", help: "How well you understand the customer's actual approval path." },
+        { key: "procurement_stage", label: "Procurement stage", type: "slider", help: "Progress through procurement, legal or vendor-onboarding workflows." },
+        { key: "paper_process_clear", label: "Paperwork clarity", type: "slider", help: "Clarity around MSA, PO, security review and other closing paperwork." }
+      ],
+      trace: [
+        { k: "Tprime", label: "Timeline pressure T′" },
+        { k: "Enorm", label: "Engagement E_norm" },
+        { k: "Vbonus", label: "Velocity bonus" },
+        { k: "DProc", label: "Decision process composite" },
+        { k: "R4", label: "Raw score R₄" },
+        { k: "L4", label: "Log-point L₄" }
+      ]
+    },
+    {
+      id: "p5", code: "P5", name: "Edge", tagline: "Why would they choose us?", weight: 0.10, accent: "--p5",
+      fields: [
+        { key: "sole_vendor", label: "Sole vendor", type: "toggle", on: "Sole vendor", off: "Competing", help: "Whether you are the only vendor being considered." },
+        { key: "differentiation", label: "Differentiation", type: "slider", help: "How clearly your solution stands apart in ways the customer values." },
+        { key: "relationship_strength", label: "Relationship strength", type: "slider", help: "Overall trust and rapport with key people in the account." },
+        { key: "n_competitors", label: "Competitors in the deal", type: "number", min: 0, max: 20, step: 1, unit: "vendors", help: "Number of credible competing vendors being considered.", dependsOn: function (s) { return s.sole_vendor === 0; } },
+        { key: "win_rate", label: "Win rate (stated)", type: "slider", help: "Historical win percentage in similar competitive situations.", dependsOn: function (s) { return s.sole_vendor === 0 && !s.use_win_evidence; } },
+        { key: "use_win_evidence", label: "Blend in historical evidence", type: "toggle", on: "BCI blended", off: "Stated only", help: "Uses a conservative Bayesian estimate of win rate when enough history exists.", dependsOn: function (s) { return s.sole_vendor === 0; } },
+        { key: "n_competitive_deals", label: "Competitive deals sampled", type: "number", min: 0, max: 500, step: 1, unit: "deals", help: "Historical competitive deals used to estimate win patterns (needs > 5).", dependsOn: function (s) { return s.sole_vendor === 0 && s.use_win_evidence; } },
+        { key: "n_wins", label: "Wins in that sample", type: "number", min: 0, max: 500, step: 1, unit: "wins", help: "Number of wins within the comparable historical sample.", dependsOn: function (s) { return s.sole_vendor === 0 && s.use_win_evidence; } }
+      ],
+      trace: [
+        { k: "mode", label: "Mode", isText: true },
+        { k: "Cpress", label: "Competitive pressure", optional: true },
+        { k: "Wadj", label: "Win rate (adjusted)", optional: true },
+        { k: "R5", label: "Raw score R₅" },
+        { k: "L5", label: "Log-point L₅" }
+      ]
+    }
+  ];
+
+  var GATES = [
+    { key: "gate1", code: "G1", name: "Capital", desc: "Financial ability and a funding path both exist." },
+    { key: "gate2", code: "G2", name: "Legal", desc: "No legal or compliance block to selling here." },
+    { key: "gate3", code: "G3", name: "Technical", desc: "Product can technically serve the need." }
+  ];
+
+  var BANDS = [
+    { max: 25, label: "COLD", varName: "--band0", copy: "Early or weak on the fundamentals. Qualify harder before investing more time." },
+    { max: 50, label: "DEVELOPING", varName: "--band1", copy: "Some real signal, but gaps remain in money, power, or momentum." },
+    { max: 80, label: "QUALIFIED", varName: "--band2", copy: "A healthy, fundable deal with a clear path to close — worth active investment this cycle." },
+    { max: 115, label: "STRONG", varName: "--band3", copy: "Strong across most dimensions. Prioritize and protect this deal's timeline." },
+    { max: Infinity, label: "EXCEPTIONAL", varName: "--band4", copy: "About as good as this model gets — capital, fit, power, and urgency are all aligned." }
+  ];
+
+  var registry = {}; // key -> { rangeEl, numberEl, checkboxEl, stateTextEl, fieldEl, cfg }
+
+  /* ---------------------------------------------------------------- */
+  /*  DOM build helpers                                                */
+  /* ---------------------------------------------------------------- */
+
+  function el(tag, attrs, html) {
+    var e = document.createElement(tag);
+    if (attrs) for (var k in attrs) {
+      if (k === "class") e.className = attrs[k];
+      else e.setAttribute(k, attrs[k]);
+    }
+    if (html !== undefined) e.innerHTML = html;
+    return e;
+  }
+
+  function fmt(n, dp) {
+    dp = dp === undefined ? 2 : dp;
+    if (n === undefined || n === null || isNaN(n)) return "—";
+    return Number(n).toFixed(dp);
+  }
+
+  function setPct(rangeEl) {
+    var min = parseFloat(rangeEl.min), max = parseFloat(rangeEl.max), v = parseFloat(rangeEl.value);
+    var pct = max > min ? ((v - min) / (max - min)) * 100 : 0;
+    rangeEl.style.setProperty("--pct", pct + "%");
+  }
+
+  function buildSliderField(container, cfg, accentVar) {
+    var min = cfg.min === undefined ? 0 : cfg.min;
+    var max = cfg.max === undefined ? 1 : cfg.max;
+    var step = cfg.step === undefined ? 0.01 : cfg.step;
+    var dp = step < 0.1 ? 2 : (step < 1 ? 1 : 0);
+
+    var wrap = el("div", { class: "field", "data-key": cfg.key });
+    var labelRow = el("div", { class: "field-label-row" });
+    labelRow.appendChild(el("span", { class: "field-label" }, cfg.label));
+    var valueBox = el("div", { class: "field-value-box" });
+    var numInput = el("input", { type: "number", min: min, max: max, step: step });
+    numInput.value = fmt(state[cfg.key], dp);
+    valueBox.appendChild(numInput);
+    if (cfg.unit) valueBox.appendChild(el("span", { class: "unit" }, cfg.unit));
+    labelRow.appendChild(valueBox);
+    wrap.appendChild(labelRow);
+
+    var rangeInput = el("input", { type: "range", min: min, max: max, step: step, style: "--track-fill:var(" + accentVar + ")" });
+    rangeInput.value = state[cfg.key];
+    wrap.appendChild(rangeInput);
+
+    if (cfg.help) wrap.appendChild(el("div", { class: "field-caption" }, cfg.help));
+    container.appendChild(wrap);
+    setPct(rangeInput);
+
+    function commit(v) {
+      v = Math.max(min, Math.min(max, v));
+      state[cfg.key] = v;
+      rangeInput.value = v;
+      numInput.value = fmt(v, dp);
+      setPct(rangeInput);
+      renderAll();
+    }
+    rangeInput.addEventListener("input", function () { commit(parseFloat(rangeInput.value)); });
+    numInput.addEventListener("input", function () {
+      var v = parseFloat(numInput.value);
+      if (isNaN(v)) return;
+      commit(v);
+    });
+
+    registry[cfg.key] = { cfg: cfg, fieldEl: wrap, rangeEl: rangeInput, numberEl: numInput, sync: function () {
+      rangeInput.value = state[cfg.key]; numInput.value = fmt(state[cfg.key], dp); setPct(rangeInput);
+    }};
+  }
+
+  function buildNumberField(container, cfg) {
+    var min = cfg.min === undefined ? 0 : cfg.min;
+    var max = cfg.max === undefined ? 1000000 : cfg.max;
+    var step = cfg.step === undefined ? 1 : cfg.step;
+
+    var wrap = el("div", { class: "field field--number", "data-key": cfg.key });
+    var labelRow = el("div", { class: "field-label-row" });
+    labelRow.appendChild(el("span", { class: "field-label" }, cfg.label));
+    if (cfg.unit) labelRow.appendChild(el("span", { class: "unit mono" }, cfg.unit));
+    wrap.appendChild(labelRow);
+
+    var valueBox = el("div", { class: "field-value-box", style: "width:100%;" });
+    var numInput = el("input", { type: "number", min: min, max: max, step: step, style: "width:100%; text-align:left;" });
+    numInput.value = state[cfg.key];
+    valueBox.appendChild(numInput);
+    wrap.appendChild(valueBox);
+
+    if (cfg.help) wrap.appendChild(el("div", { class: "field-caption" }, cfg.help));
+    container.appendChild(wrap);
+
+    function commit(v) {
+      v = Math.max(min, Math.min(max, v));
+      state[cfg.key] = v;
+      numInput.value = v;
+      renderAll();
+    }
+    numInput.addEventListener("input", function () {
+      var v = parseFloat(numInput.value);
+      if (isNaN(v)) return;
+      commit(v);
+    });
+
+    registry[cfg.key] = { cfg: cfg, fieldEl: wrap, numberEl: numInput, sync: function () { numInput.value = state[cfg.key]; } };
+  }
+
+  function buildToggleField(container, cfg) {
+    var wrap = el("div", { class: "field field--toggle", "data-key": cfg.key });
+    var labelRow = el("div", { class: "field-label-row" });
+    labelRow.appendChild(el("span", { class: "field-label" }, cfg.label));
+    wrap.appendChild(labelRow);
+
+    var row = el("label", { class: "toggle-row" });
+    var sw = el("span", { class: "switch" });
+    var chk = el("input", { type: "checkbox" });
+    var stateVal = state[cfg.key];
+    chk.checked = (stateVal === true || stateVal === 1);
+    sw.appendChild(chk);
+    sw.appendChild(el("span", { class: "track" }));
+    sw.appendChild(el("span", { class: "thumb" }));
+    row.appendChild(sw);
+    var stateText = el("span", { class: "toggle-state-text" }, chk.checked ? cfg.on : cfg.off);
+    row.appendChild(stateText);
+    wrap.appendChild(row);
+
+    if (cfg.help) wrap.appendChild(el("div", { class: "field-caption" }, cfg.help));
+    container.appendChild(wrap);
+
+    var storeAsBool = (typeof DEFAULTS[cfg.key] === "boolean");
+    chk.addEventListener("change", function () {
+      state[cfg.key] = storeAsBool ? chk.checked : (chk.checked ? 1 : 0);
+      stateText.textContent = chk.checked ? cfg.on : cfg.off;
+      renderAll();
+    });
+
+    registry[cfg.key] = { cfg: cfg, fieldEl: wrap, checkboxEl: chk, stateTextEl: stateText, sync: function () {
+      var v = state[cfg.key];
+      chk.checked = (v === true || v === 1);
+      stateText.textContent = chk.checked ? cfg.on : cfg.off;
+    }};
+  }
+
+  function buildModules() {
+    var root = document.getElementById("modulesRoot");
+    MODULES.forEach(function (mod) {
+      var card = el("div", { class: "module", id: "module-" + mod.id, style: "--accent:var(" + mod.accent + ")" });
+
+      var header = el("div", { class: "module-header" });
+      header.appendChild(el("div", { class: "module-code" }, mod.code));
+      var titles = el("div", { class: "module-titles" });
+      titles.innerHTML = '<h3>' + mod.name + ' <span class="tagline">— ' + mod.tagline + '</span></h3>';
+      header.appendChild(titles);
+
+      var meta = el("div", { class: "module-meta" });
+      var wBlock = el("div", { class: "meta-block" });
+      wBlock.innerHTML = '<div class="label">Weight</div><div class="value mono">' + mod.weight.toFixed(2) + '</div>';
+      var lBlock = el("div", { class: "meta-block" });
+      lBlock.innerHTML = '<div class="label">L' + mod.code.slice(1) + '</div><div class="value mono" id="lval-' + mod.id + '">0.00</div><div class="module-minibar"><i id="minibar-' + mod.id + '"></i></div>';
+      meta.appendChild(wBlock);
+      meta.appendChild(lBlock);
+      header.appendChild(meta);
+      header.appendChild(el("div", { class: "chev" }, '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>'));
+      card.appendChild(header);
+
+      var body = el("div", { class: "module-body" });
+      var grid = el("div", { class: "field-grid", id: "grid-" + mod.id });
+      mod.fields.forEach(function (f) {
+        if (f.type === "slider") buildSliderField(grid, f, mod.accent);
+        else if (f.type === "number") buildNumberField(grid, f);
+        else if (f.type === "toggle") buildToggleField(grid, f);
+      });
+      body.appendChild(grid);
+
+      var details = el("details", { class: "trace-details" });
+      details.appendChild(el("summary", { class: "trace-summary" }, "Show the math"));
+      var traceGrid = el("div", { class: "trace-grid", id: "trace-" + mod.id });
+      details.appendChild(traceGrid);
+      body.appendChild(details);
+
+      card.appendChild(body);
+      header.addEventListener("click", function () { card.classList.toggle("collapsed"); });
+      root.appendChild(card);
+    });
+  }
+
+  function buildGates() {
+    var row = document.getElementById("gatesRow");
+    GATES.forEach(function (g) {
+      var box = el("div", { class: "gate-switch", id: "gate-" + g.key });
+      var head = el("div", { class: "gate-head" });
+      head.appendChild(el("div", {}, '<div class="gate-code">' + g.code + '</div><div class="gate-name">' + g.name + '</div>'));
+      var sw = el("label", { class: "switch", style: "margin-top:2px;" });
+      var chk = el("input", { type: "checkbox" });
+      chk.checked = !!state[g.key];
+      sw.appendChild(chk);
+      sw.appendChild(el("span", { class: "track" }));
+      sw.appendChild(el("span", { class: "thumb" }));
+      head.appendChild(sw);
+      box.appendChild(head);
+      box.appendChild(el("div", { class: "gate-desc" }, g.desc));
+      var stateLabel = el("div", { class: "gate-state-label", id: "gatelabel-" + g.key, style: "margin-top:8px;" });
+      box.appendChild(stateLabel);
+      row.insertBefore(box, row.lastElementChild); // keep modifier box last
+
+      chk.addEventListener("change", function () {
+        state[g.key] = chk.checked;
+        renderAll();
+      });
+      registry[g.key] = { checkboxEl: chk, sync: function () { chk.checked = !!state[g.key]; } };
+    });
+  }
+
+  /* ---------------------------------------------------------------- */
+  /*  rendering                                                         */
+  /* ---------------------------------------------------------------- */
+
+  function bandFor(score) {
+    for (var i = 0; i < BANDS.length; i++) if (score < BANDS[i].max) return BANDS[i];
+    return BANDS[BANDS.length - 1];
+  }
+
+  function renderGauge(score) {
+    var clamped = Math.max(0, Math.min(GAUGE_MAX, score));
+    var frac = clamped / GAUGE_MAX;
+    var angle = -132 + frac * 264;
+    var needle = document.getElementById("needleGroup");
+    needle.setAttribute("transform", "rotate(" + angle.toFixed(2) + " 150 158)");
+
+    var parts = score.toFixed(2).split(".");
+    document.getElementById("scoreNumber").innerHTML = parts[0] + '<span class="pt">.' + parts[1] + '</span>';
+  }
+
+  function renderVerdict(compute) {
+    var pill = document.getElementById("verdictPill");
+    var copyEl = document.getElementById("verdictCopy");
+    var banner = document.getElementById("disqBanner");
+    var disqDetail = document.getElementById("disqDetail");
+
+    if (compute.G === 0) {
+      banner.classList.add("show");
+      var failed = GATES.filter(function (g) { return !state[g.key]; }).map(function (g) { return g.code + " " + g.name; });
+      disqDetail.textContent = "Failed: " + failed.join(", ") + ". Gates are knockout conditions — while any one fails, no amount of fit, power, or momentum can offset it. The five parameter scores below are still shown for reference.";
+      pill.textContent = "DISQUALIFIED";
+      pill.style.color = "var(--crimson)";
+      pill.style.background = "var(--crimson-soft)";
+      copyEl.textContent = "Fix the failing gate before investing more sales time — the formula treats this as a hard stop.";
+      copyEl.style.color = "";
+    } else {
+      banner.classList.remove("show");
+      var band = bandFor(compute.score);
+      pill.textContent = band.label;
+      pill.style.color = "var(" + band.varName + ")";
+      pill.style.background = "color-mix(in srgb, var(" + band.varName + ") 16%, transparent)";
+      copyEl.textContent = band.copy;
+    }
+  }
+
+  function renderFormulaTrace(compute) {
+    document.getElementById("trG").textContent = compute.G;
+    document.getElementById("trM").textContent = compute.M.toFixed(2);
+    document.getElementById("trWS").textContent = compute.weightedSum.toFixed(3);
+    var scoreEl = document.getElementById("trScore");
+    scoreEl.textContent = compute.score.toFixed(2);
+    scoreEl.style.color = compute.G === 0 ? "var(--crimson)" : "var(--brass)";
+    document.getElementById("weightedSumVal").textContent = compute.weightedSum.toFixed(3);
+  }
+
+  function renderGates() {
+    GATES.forEach(function (g) {
+      var box = document.getElementById("gate-" + g.key);
+      var label = document.getElementById("gatelabel-" + g.key);
+      var pass = !!state[g.key];
+      box.setAttribute("data-state", pass ? "pass" : "fail");
+      label.textContent = pass ? "PASS" : "FAIL";
+      label.style.color = pass ? "var(--teal)" : "var(--crimson)";
+    });
+  }
+
+  function modifierBandText(m) {
+    if (m >= 0.95) return "Clean, straightforward deal.";
+    if (m >= 0.75) return "Some friction — complex procurement, manageable.";
+    if (m >= 0.55) return "Significant friction — multi-country, heavy legal.";
+    return "Maximum friction before you'd gate it out entirely.";
+  }
+
+  function renderModifier() {
+    document.getElementById("modifierVal").textContent = state.modifier.toFixed(2);
+    document.getElementById("modifierBand").textContent = modifierBandText(state.modifier);
+    var slider = document.getElementById("modifierSlider");
+    if (parseFloat(slider.value) !== state.modifier) slider.value = state.modifier;
+    setPct(slider);
+  }
+
+  function renderModules(compute) {
+    var byId = { p1: compute.p1, p2: compute.p2, p3: compute.p3, p4: compute.p4, p5: compute.p5 };
+    var maxRef = { p1: RADAR_REF.L1, p2: RADAR_REF.L2, p3: RADAR_REF.L3, p4: RADAR_REF.L4, p5: RADAR_REF.L1 };
+    MODULES.forEach(function (mod) {
+      var res = byId[mod.id];
+      document.getElementById("lval-" + mod.id).textContent = fmt(res.L, 3);
+
+      var contributionMax = GAUGE_MAX * WEIGHTS["L" + mod.code.slice(1)];
+      var bar = document.getElementById("minibar-" + mod.id);
+      var pct = contributionMax > 0 ? Math.max(0, Math.min(100, (compute.contributions[mod.id] / contributionMax) * 100)) : 0;
+      bar.style.width = pct + "%";
+
+      var traceGrid = document.getElementById("trace-" + mod.id);
+      traceGrid.innerHTML = "";
+      mod.trace.forEach(function (t) {
+        var v = res.details[t.k];
+        if (v === undefined) { if (t.optional) return; v = 0; }
+        var item = el("div", { class: "trace-item" });
+        var displayVal = t.isText ? v : fmt(v, 3);
+        item.innerHTML = '<span class="k">' + t.label + '</span><br><span class="v">' + displayVal + "</span>";
+        traceGrid.appendChild(item);
+      });
+
+      mod.fields.forEach(function (f) {
+        if (!f.dependsOn) return;
+        var reg = registry[f.key];
+        if (!reg) return;
+        var active = f.dependsOn(state);
+        reg.fieldEl.classList.toggle("field--inactive", !active);
+      });
+    });
+  }
+
+  function renderContribBar(compute) {
+    var track = document.getElementById("contribBar");
+    track.innerHTML = "";
+    var legend = document.getElementById("contribLegend");
+    legend.innerHTML = "";
+    var used = 0;
+    MODULES.forEach(function (mod) {
+      var val = compute.contributions[mod.id];
+      var pct = Math.max(0, (val / GAUGE_MAX) * 100);
+      used += pct;
+      var seg = el("div", { class: "contrib-seg", style: "width:" + pct + "%; background:var(" + mod.accent + ");" });
+      seg.appendChild(el("span", { class: "seg-label" }, mod.code));
+      track.appendChild(seg);
+
+      var item = el("div", { class: "legend-item" });
+      item.innerHTML = '<i style="background:var(' + mod.accent + ')"></i><b>' + mod.code + '</b> ' + mod.name + ' <span class="val mono">+' + val.toFixed(2) + '</span>';
+      legend.appendChild(item);
+    });
+    var headroom = Math.max(0, 100 - used);
+    track.appendChild(el("div", { class: "contrib-seg headroom", style: "width:" + headroom + "%;" }));
+  }
+
+  function renderRadar(compute) {
+    var cx = 130, cy = 120, r = 92;
+    var order = [
+      { id: "p1", ref: RADAR_REF.L1 }, { id: "p2", ref: RADAR_REF.L2 }, { id: "p3", ref: RADAR_REF.L3 },
+      { id: "p4", ref: RADAR_REF.L4 }, { id: "p5", ref: RADAR_REF.L5 }
+    ];
+    var byId = { p1: compute.p1, p2: compute.p2, p3: compute.p3, p4: compute.p4, p5: compute.p5 };
+    var thetas = [0, 72, 144, 216, 288];
+    var pts = [];
+    var dots = document.getElementById("radarDots");
+    dots.innerHTML = "";
+    order.forEach(function (o, i) {
+      var norm = Math.max(0, Math.min(1, byId[o.id].L / o.ref));
+      var t = thetas[i] * Math.PI / 180;
+      var x = cx + r * norm * Math.sin(t);
+      var y = cy - r * norm * Math.cos(t);
+      pts.push(x.toFixed(1) + "," + y.toFixed(1));
+      var mod = MODULES[i];
+      var dot = el("circle", { cx: x.toFixed(1), cy: y.toFixed(1), r: "3.4", fill: "var(" + mod.accent + ")", stroke: "var(--ink)", "stroke-width": "1" });
+      dots.appendChild(dot);
+    });
+    document.getElementById("radarPoly").setAttribute("points", pts.join(" "));
+
+    var legend = document.getElementById("radarLegend");
+    legend.innerHTML = "";
+    order.forEach(function (o, i) {
+      var mod = MODULES[i];
+      var norm = Math.max(0, Math.min(1, byId[o.id].L / o.ref));
+      var item = el("div", { class: "legend-item" });
+      item.innerHTML = '<i style="background:var(' + mod.accent + ')"></i><b>' + mod.code + '</b><span class="val mono">' + (norm * 100).toFixed(0) + "%</span>";
+      legend.appendChild(item);
+    });
+  }
+
+  function renderAll() {
+    var compute = computeFinalScore(state);
+    renderGauge(compute.score);
+    renderVerdict(compute);
+    renderFormulaTrace(compute);
+    renderGates();
+    renderModifier();
+    renderModules(compute);
+    renderContribBar(compute);
+    renderRadar(compute);
+    return compute;
+  }
+
+  /* ---------------------------------------------------------------- */
+  /*  global controls                                                   */
+  /* ---------------------------------------------------------------- */
+
+  function syncAllInputs() {
+    for (var k in registry) if (registry[k].sync) registry[k].sync();
+  }
+
+  function showToast(msg) {
+    var t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(showToast._tm);
+    showToast._tm = setTimeout(function () { t.classList.remove("show"); }, 2200);
+  }
+
+  function wireGlobalControls() {
+    document.getElementById("btnReset").addEventListener("click", function () {
+      state = JSON.parse(JSON.stringify(DEFAULTS));
+      syncAllInputs();
+      renderAll();
+      showToast("Reset to the sample deal");
+    });
+
+    document.getElementById("btnRandomize").addEventListener("click", function () {
+      MODULES.forEach(function (mod) {
+        mod.fields.forEach(function (f) {
+          if (f.type === "slider") {
+            var min = f.min === undefined ? 0 : f.min, max = f.max === undefined ? 1 : f.max;
+            state[f.key] = +(min + Math.random() * (max - min)).toFixed(2);
+          } else if (f.type === "number") {
+            var lo = f.min === undefined ? 0 : f.min, hi = f.max === undefined ? 50 : Math.min(f.max, 60);
+            state[f.key] = Math.round(lo + Math.random() * (hi - lo));
+          } else if (f.type === "toggle") {
+            var v = Math.random() > 0.4;
+            state[f.key] = (typeof DEFAULTS[f.key] === "boolean") ? v : (v ? 1 : 0);
+          }
+        });
+      });
+      GATES.forEach(function (g) { state[g.key] = Math.random() > 0.18; });
+      state.modifier = +(0.5 + Math.random() * 0.5).toFixed(2);
+      if (state.deal_value < 1) state.deal_value = 1;
+      syncAllInputs();
+      renderAll();
+      showToast("Randomized — exploring the parameter space");
+    });
+
+    document.getElementById("btnCopy").addEventListener("click", function () {
+      var compute = computeFinalScore(state);
+      var lines = [
+        "LEAD SCORE — " + compute.score.toFixed(2) + " (" + (compute.G === 0 ? "DISQUALIFIED" : bandFor(compute.score).label) + ")",
+        "G=" + compute.G + "  M=" + compute.M.toFixed(2) + "  Σ wᵢLᵢ=" + compute.weightedSum.toFixed(3)
+      ];
+      MODULES.forEach(function (mod) {
+        var res = { p1: compute.p1, p2: compute.p2, p3: compute.p3, p4: compute.p4, p5: compute.p5 }[mod.id];
+        lines.push(mod.code + " " + mod.name + ": L=" + res.L.toFixed(3) + "  contribution=" + compute.contributions[mod.id].toFixed(2));
+      });
+      var text = lines.join("\n");
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () {
+          showToast("Summary copied to clipboard");
+        }).catch(function () { showToast("Couldn't copy — clipboard blocked here"); });
+      } else {
+        showToast("Couldn't copy — clipboard blocked here");
+      }
+    });
+
+    document.getElementById("btnExport").addEventListener("click", function () {
+      var blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = "lead-score-scenario.json";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast("Scenario exported");
+    });
+
+    document.getElementById("fileImport").addEventListener("change", function (e) {
+      var file = e.target.files && e.target.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function () {
+        try {
+          var parsed = JSON.parse(reader.result);
+          var next = JSON.parse(JSON.stringify(DEFAULTS));
+          for (var k in next) if (parsed.hasOwnProperty(k)) next[k] = parsed[k];
+          state = next;
+          syncAllInputs();
+          renderAll();
+          showToast("Scenario imported");
+        } catch (err) {
+          showToast("That file isn't a valid scenario export");
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = "";
+    });
+
+    var modSlider = document.getElementById("modifierSlider");
+    modSlider.addEventListener("input", function () {
+      state.modifier = parseFloat(modSlider.value);
+      renderAll();
+    });
+  }
+
+  /* ---------------------------------------------------------------- */
+  /*  init                                                              */
+  /* ---------------------------------------------------------------- */
+
+  function init() {
+    buildGates();
+    buildModules();
+    wireGlobalControls();
+    renderAll();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+
+  // exposed for debugging in the console
+  window.__leadScore = { state: state, computeFinalScore: computeFinalScore, renderAll: renderAll };
+})();
+
+</script>
+</body>
+</html>
