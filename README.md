@@ -1,5 +1,11 @@
 # Lead Scoring Model
 
+You can access my models here:
+
+[Lead Score](https://mantavyamaan.github.io/Lead_Score/lead-score-console.html)
+
+[Simplified Lead Score](https://mantavyamaan.github.io/Lead_Score/simplified-lead-score-console.html)
+
 ## Overview
 
 The Lead Scoring Model is a multi-dimensional scoring framework designed to evaluate, rank, and prioritize sales leads based on their likelihood of conversion and long-term business value.
