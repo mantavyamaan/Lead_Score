@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Lead Score Console</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#0b0e14; --panel:#141925; --panel2:#1b2230; --card:#1f2737; --border:#2a3344;
+    --accent:#6366f1; --accent2:#8b5cf6; --cyan:#22d3ee;
+    --green:#10b981; --yellow:#f59e0b; --orange:#fb923c; --red:#ef4444;
+    --text:#e6edf6; --muted:#9aa7bd; --dim:#64748b;
+    --shadow:0 10px 30px rgba(0,0,0,.4);
+  }
+  html{font-size:14px}
+  body{
+    background:radial-gradient(1200px 600px at 80% -10%,rgba(99,102,241,.12),transparent 60%),
+               radial-gradient(900px 500px at -10% 110%,rgba(34,211,238,.08),transparent 55%),
+               var(--bg);
+    color:var(--text);
+    font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    min-height:100vh;line-height:1.5;
+  }
+  .wrap{max-width:1360px;margin:0 auto;padding:24px 24px 80px}
+
+  /* Header */
+  .topbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px}
+  .brand{display:flex;flex-direction:column;gap:3px}
+  .brand .kicker{font-size:10px;letter-spacing:2.5px;color:var(--accent);font-weight:700;text-transform:uppercase}
+  .brand h1{font-size:22px;font-weight:700;letter-spacing:.3px}
+  .brand p{font-size:12px;color:var(--muted);max-width:560px;margin-top:2px}
+  .actions{display:flex;flex-wrap:wrap;gap:8px}
+  .btn{
+    font-size:12px;font-weight:600;padding:8px 14px;border-radius:9px;cursor:pointer;
+    background:var(--panel2);border:1px solid var(--border);color:var(--text);
+    transition:border-color .15s,background .15s,transform .1s;display:inline-flex;align-items:center;gap:6px;
+  }
+  .btn:hover{border-color:var(--accent);background:rgba(99,102,241,.1)}
+  .btn:active{transform:translateY(1px)}
+  .btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent}
+  .btn.danger:hover{border-color:var(--red);background:rgba(239,68,68,.1)}
+
+  /* Top grid: gauge + gates + composition */
+  .top-grid{display:grid;grid-template-columns:340px 1fr;gap:18px;margin-bottom:18px}
+  .panel{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow)}
+  .panel-pad{padding:20px}
+  .panel-title{font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--dim);font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .panel-title::before{content:'';width:3px;height:13px;background:var(--accent);border-radius:2px}
+
+  /* Gauge */
+  .gauge-card{display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .gauge-wrap{position:relative;width:280px;height:170px}
+  .gauge-wrap svg{width:280px;height:170px;display:block;overflow:visible}
+  .gauge-center{position:absolute;left:0;right:0;bottom:6px;text-align:center}
+  .gauge-score{font-size:46px;font-weight:800;line-height:1;transition:color .4s}
+  .gauge-of{font-size:11px;color:var(--dim);margin-top:2px}
+  .gauge-badge{margin-top:10px;font-size:12px;font-weight:700;letter-spacing:1px;padding:5px 16px;border-radius:20px;transition:all .4s}
+  .gauge-scale{display:flex;justify-content:space-between;width:240px;margin-top:14px;font-size:9px;color:var(--dim);font-weight:600;letter-spacing:.4px}
+
+  /* Gates */
+  .gates-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+  .gate{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 15px;transition:border-color .2s}
+  .gate.fail{border-color:rgba(239,68,68,.5);background:rgba(239,68,68,.06)}
+  .gate-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+  .gate-name{font-size:12px;font-weight:700}
+  .gate-desc{font-size:11px;color:var(--muted);line-height:1.4;margin-bottom:10px}
+  .pill{font-size:9.5px;font-weight:800;letter-spacing:.6px;padding:3px 9px;border-radius:5px}
+  .pill.pass{background:rgba(16,185,129,.16);color:var(--green)}
+  .pill.fail{background:rgba(239,68,68,.18);color:var(--red)}
+  .switch{position:relative;display:inline-flex;align-items:center;cursor:pointer;gap:8px;font-size:11px;color:var(--muted)}
+  .switch input{display:none}
+  .track{width:38px;height:20px;background:var(--border);border-radius:20px;position:relative;transition:background .2s;flex-shrink:0}
+  .track::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .2s}
+  .switch input:checked + .track{background:var(--green)}
+  .switch input:checked + .track::after{transform:translateX(18px)}
+  .mod-row{display:flex;align-items:center;gap:12px;margin-top:8px}
+  .mod-row input[type=range]{flex:1}
+  .mod-val{font-size:14px;font-weight:700;color:var(--cyan);min-width:46px;text-align:right}
+
+  /* Composition bars */
+  .comp-list{display:flex;flex-direction:column;gap:12px;margin-top:4px}
+  .comp-row{display:grid;grid-template-columns:96px 1fr 64px;align-items:center;gap:12px}
+  .comp-tag{font-size:12px;font-weight:700}
+  .comp-sub{font-size:9px;color:var(--dim);font-weight:500;display:block;margin-top:1px}
+  .comp-track{height:9px;background:var(--border);border-radius:6px;overflow:hidden}
+  .comp-fill{height:100%;border-radius:6px;transition:width .5s cubic-bezier(.4,0,.2,1),background .3s}
+  .comp-num{font-size:13px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+
+  /* Radar */
+  .mid-grid{display:grid;grid-template-columns:360px 1fr;gap:18px;margin-bottom:18px}
+  .radar-wrap{display:flex;justify-content:center;padding:6px 0}
+  .radar-legend{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+  .radar-legend .rl{display:flex;align-items:center;justify-content:space-between;font-size:11px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:6px 10px}
+  .radar-legend .rl b{color:var(--cyan);font-variant-numeric:tabular-nums}
+
+  /* X-detail breakdown table */
+  .xtable{width:100%;border-collapse:collapse;font-size:12px}
+  .xtable th{text-align:left;padding:9px 10px;font-size:9.5px;letter-spacing:.5px;text-transform:uppercase;color:var(--dim);border-bottom:1px solid var(--border);font-weight:700}
+  .xtable td{padding:9px 10px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle}
+  .xtable tr:hover td{background:rgba(255,255,255,.025)}
+  .xbar{height:5px;background:var(--border);border-radius:3px;overflow:hidden;width:130px}
+  .xbar-fill{height:100%;border-radius:3px;transition:width .4s}
+
+  /* Parameter cards */
+  .params-head{display:flex;align-items:center;justify-content:space-between;margin:26px 0 14px}
+  .params-head h2{font-size:15px;font-weight:700}
+  .params-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+  .pcard{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
+  .pcard-head{padding:15px 18px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.015)}
+  .pcard-id{font-size:10px;font-weight:800;letter-spacing:1px;color:var(--accent)}
+  .pcard-title{font-size:14px;font-weight:700;margin-top:1px}
+  .pcard-q{font-size:11px;color:var(--muted);margin-top:2px}
+  .pcard-score{text-align:right;flex-shrink:0}
+  .pcard-score .v{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;transition:color .3s}
+  .pcard-score .w{font-size:9px;color:var(--dim);letter-spacing:.5px}
+  .pcard-body{padding:8px 18px 16px}
+
+  .field{padding:9px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+  .field:last-child{border-bottom:none}
+  .field-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+  .field-label{font-size:12px;color:var(--text);font-weight:500}
+  .field-hint{font-size:10px;color:var(--dim);margin-top:2px;line-height:1.4}
+  .field-val{font-size:12px;font-weight:700;color:var(--accent);min-width:46px;text-align:right;font-variant-numeric:tabular-nums;flex-shrink:0}
+  .num-inline{display:flex;align-items:center;gap:8px}
+  .num-inline .pre{font-size:12px;color:var(--muted)}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:4px;background:var(--border);border-radius:3px;outline:none;cursor:pointer;margin-top:8px}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);box-shadow:0 0 0 1px var(--accent);cursor:pointer;transition:background .15s}
+  input[type=range]:hover::-webkit-slider-thumb{background:var(--accent2)}
+  input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);cursor:pointer}
+  input[type=number]{width:100%;background:var(--card);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px;padding:6px 9px;outline:none;-moz-appearance:textfield;transition:border-color .15s}
+  input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+  input[type=number]:focus{border-color:var(--accent)}
+  .dual{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+  .dual .sub{font-size:9.5px;color:var(--dim);margin-bottom:3px;display:block}
+  .weekly{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
+  .weekly .wc label{font-size:9px;color:var(--dim);display:block;margin-bottom:3px}
+  .weekly .wc input{padding:4px 5px;font-size:11px}
+
+  .math-toggle{font-size:11px;color:var(--accent);cursor:pointer;user-select:none;margin-top:12px;display:inline-flex;align-items:center;gap:5px;font-weight:600}
+  .math-box{display:none;margin-top:10px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:12px;font-size:11px;color:var(--muted);line-height:1.7}
+  .math-box.open{display:block}
+  .math-box code{color:var(--cyan);font-family:'JetBrains Mono',Consolas,monospace;font-size:10.5px}
+  .math-box .ml{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px dashed rgba(255,255,255,.05)}
+  .math-box .ml:last-child{border-bottom:none}
+  .math-box .ml b{color:var(--text);font-variant-numeric:tabular-nums}
+
+  .footer-note{margin-top:30px;text-align:center;font-size:11px;color:var(--dim);line-height:1.7}
+  .footer-note code{color:var(--accent2);font-family:Consolas,monospace}
+
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--panel2);border:1px solid var(--accent);color:var(--text);padding:10px 20px;border-radius:10px;font-size:12px;font-weight:600;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:100}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  @media(max-width:1080px){
+    .top-grid,.mid-grid{grid-template-columns:1fr}
+    .params-grid{grid-template-columns:1fr}
+  }
+  @media(max-width:560px){
+    .gates-grid{grid-template-columns:1fr}
+    .comp-row{grid-template-columns:80px 1fr 54px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HEADER -->
+  <div class="topbar">
+    <div class="brand">
+      <span class="kicker">Deal Qualification Instrument</span>
+      <h1>Lead Score Console</h1>
+      <p>Full 10-parameter engine — Bayesian credible intervals, exponential decay, Huber robust composites and a Choquet integral with pairwise interactions. Adjust any input; the score recalculates instantly.</p>
+    </div>
+    <div class="actions">
+      <button class="btn primary" id="btn-rand">⚄ Randomize</button>
+      <button class="btn" id="btn-reset">↺ Reset to sample</button>
+      <button class="btn" id="btn-copy">⧉ Copy summary</button>
+      <button class="btn danger" id="btn-export">⭳ Export scenario</button>
+      <label class="btn" style="cursor:pointer">⭱ Import<input type="file" id="file-import" accept="application/json" hidden></label>
+    </div>
+  </div>
+
+  <!-- TOP GRID -->
+  <div class="top-grid">
+    <!-- Gauge -->
+    <div class="panel panel-pad gauge-card">
+      <div class="gauge-wrap">
+        <svg viewBox="0 0 280 170">
+          <defs>
+            <linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#ef4444"/><stop offset=".4" stop-color="#f59e0b"/>
+              <stop offset=".7" stop-color="#22d3ee"/><stop offset="1" stop-color="#10b981"/>
+            </linearGradient>
+          </defs>
+          <path d="M 30 150 A 110 110 0 0 1 250 150" fill="none" stroke="#2a3344" stroke-width="18" stroke-linecap="round"/>
+          <path id="gauge-arc" d="M 30 150 A 110 110 0 0 1 250 150" fill="none" stroke="url(#gaugeGrad)" stroke-width="18" stroke-linecap="round" stroke-dasharray="0 1000"/>
+          <line id="gauge-needle" x1="140" y1="150" x2="140" y2="55" stroke="#e6edf6" stroke-width="3" stroke-linecap="round"/>
+          <circle cx="140" cy="150" r="7" fill="#e6edf6"/>
+        </svg>
+        <div class="gauge-center">
+          <div class="gauge-score" id="g-score">—</div>
+          <div class="gauge-of">of 100</div>
+          <div class="gauge-badge" id="g-badge">—</div>
+        </div>
+      </div>
+      <div class="gauge-scale"><span>0</span><span>33</span><span>66</span><span>100</span></div>
+    </div>
+
+    <!-- Gates + composition -->
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <div class="panel panel-pad">
+        <div class="panel-title">Gates &amp; Deal Friction — Global Multipliers</div>
+        <div class="gates-grid">
+          <div class="gate" id="gate-G1">
+            <div class="gate-head"><span class="gate-name">G1 · Capital</span><span class="pill pass" id="pill-G1">PASS</span></div>
+            <div class="gate-desc">Financial ability and a funding path both exist.</div>
+            <label class="switch"><input type="checkbox" class="gate-input" data-gate="G1" checked><span class="track"></span>Pass</label>
+          </div>
+          <div class="gate" id="gate-G2">
+            <div class="gate-head"><span class="gate-name">G2 · Legal</span><span class="pill pass" id="pill-G2">PASS</span></div>
+            <div class="gate-desc">No legal, sanctions or compliance block to selling here.</div>
+            <label class="switch"><input type="checkbox" class="gate-input" data-gate="G2" checked><span class="track"></span>Pass</label>
+          </div>
+          <div class="gate" id="gate-G3">
+            <div class="gate-head"><span class="gate-name">G3 · Technical</span><span class="pill pass" id="pill-G3">PASS</span></div>
+            <div class="gate-desc">Product can technically serve the core need.</div>
+            <label class="switch"><input type="checkbox" class="gate-input" data-gate="G3" checked><span class="track"></span>Pass</label>
+          </div>
+          <div class="gate" style="display:flex;flex-direction:column;justify-content:center">
+            <div class="gate-head"><span class="gate-name">M · Deal friction</span><span class="mod-val" id="mod-val">0.90</span></div>
+            <div class="gate-desc" id="mod-desc">Some friction — complex procurement, manageable.</div>
+            <input type="range" id="mod" min="0.4" max="1" step="0.05" value="0.9">
+          </div>
+        </div>
+      </div>
+
+      <div class="panel panel-pad">
+        <div class="panel-title">Score Composition — Who's Pulling the Needle</div>
+        <div class="comp-list" id="comp-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MID GRID: radar + table -->
+  <div class="mid-grid">
+    <div class="panel panel-pad">
+      <div class="panel-title">Shape of the Deal</div>
+      <div class="radar-wrap">
+        <svg id="radar" viewBox="0 0 320 280" width="320" height="280"></svg>
+      </div>
+      <div class="radar-legend" id="radar-legend"></div>
+    </div>
+
+    <div class="panel panel-pad">
+      <div class="panel-title">Parameter Breakdown &amp; Choquet Contributions</div>
+      <table class="xtable">
+        <thead><tr><th>Parameter</th><th>Score</th><th>Capacity aᵢ</th><th>Contribution</th><th>Visual</th></tr></thead>
+        <tbody id="xtable-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PARAMETER CARDS -->
+  <div class="params-head"><h2>Inputs by Parameter</h2></div>
+  <div class="params-grid" id="params-grid"></div>
+
+  <div class="footer-note">
+    Final score: <code>S = 100 · G · M · (C_μ / μ(N))</code> — Choquet integral over a 2-additive capacity with synergies (X1+X4, X1+X3, X2+X5, X3+X4, X8+X1, X9+X10) and redundancies (X5+X9, X6+X7, X2+X6).<br>
+    Runs entirely in this page — nothing leaves your browser.
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const clamp=(v,lo=0,hi=1)=>v<lo?lo:v>hi?hi:v;
+
+/* ───────────────── HELPER FUNCTIONS (ported from notebook) ───────────────── */
+const sigmoid=(x,x0=0.5,k=8)=>1/(1+Math.exp(-k*(x-x0)));
+const edp=(x,k)=>Math.exp(-k*x);
+const lnNorm=(c,cap)=>cap<=0?0:Math.min(Math.log(1+c)/Math.log(1+cap),1);
+
+// Incomplete beta / Beta-quantile for Bayesian credible interval (matches scipy beta.ppf)
+function betacf(a,b,x){
+  const MAXIT=200,EPS=3e-12,FPMIN=1e-300;
+  let qab=a+b,qap=a+1,qam=a-1,c=1,d=1-qab*x/qap;
+  if(Math.abs(d)<FPMIN)d=FPMIN; d=1/d; let h=d;
+  for(let m=1;m<=MAXIT;m++){
+    const m2=2*m;
+    let aa=m*(b-m)*x/((qam+m2)*(a+m2));
+    d=1+aa*d; if(Math.abs(d)<FPMIN)d=FPMIN;
+    c=1+aa/c; if(Math.abs(c)<FPMIN)c=FPMIN; d=1/d; h*=d*c;
+    aa=-(a+m)*(qab+m)*x/((a+m2)*(qap+m2));
+    d=1+aa*d; if(Math.abs(d)<FPMIN)d=FPMIN;
+    c=1+aa/c; if(Math.abs(c)<FPMIN)c=FPMIN; d=1/d;
+    const del=d*c; h*=del; if(Math.abs(del-1)<EPS)break;
+  }
+  return h;
+}
+function gammaln(x){
+  const g=[76.18009172947146,-86.50532032941677,24.01409824083091,
+    -1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];
+  let xx=x,y=x,tmp=x+5.5; tmp-=(xx+0.5)*Math.log(tmp); let ser=1.000000000190015;
+  for(let j=0;j<6;j++){y++;ser+=g[j]/y;}
+  return -tmp+Math.log(2.5066282746310005*ser/xx);
+}
+function betinc(x,a,b){ // regularized incomplete beta I_x(a,b)
+  if(x<=0)return 0; if(x>=1)return 1;
+  const lbeta=gammaln(a+b)-gammaln(a)-gammaln(b);
+  const bt=Math.exp(lbeta+a*Math.log(x)+b*Math.log(1-x));
+  if(x<(a+1)/(a+b+2))return bt*betacf(a,b,x)/a;
+  return 1-bt*betacf(b,a,1-x)/b;
+}
+function betaPPF(p,a,b){ // inverse CDF via bisection
+  if(p<=0)return 0; if(p>=1)return 1;
+  let lo=0,hi=1;
+  for(let i=0;i<100;i++){const mid=(lo+hi)/2; (betinc(mid,a,b)<p)?lo=mid:hi=mid;}
+  return (lo+hi)/2;
+}
+// Bayesian credible interval: beta.ppf(0.05, s+1, n-s+1)
+function bci(successes,trials,conf=0.05){
+  if(trials<=0)return 0;
+  return betaPPF(conf,successes+1,trials-successes+1);
+}
+
+// Huber Robust Composite
+function hrc(values,weights,delta=0.15,maxIter=100,tol=1e-6){
+  let w=weights.slice(); const ws=w.reduce((a,b)=>a+b,0); w=w.map(x=>x/ws);
+  let theta=values.reduce((s,v,i)=>s+w[i]*v,0);
+  for(let it=0;it<maxIter;it++){
+    const aw=w.map((wi,i)=>{const r=Math.abs(values[i]-theta);return r>delta?wi*(delta/r):wi;});
+    const aws=aw.reduce((a,b)=>a+b,0); if(aws===0)break;
+    const tn=values.reduce((s,v,i)=>s+aw[i]*v,0)/aws;
+    if(Math.abs(tn-theta)<tol){theta=tn;break;} theta=tn;
+  }
+  return theta;
+}
+function ewmaMean(values,lam=0.85){
+  const T=values.length; const w=values.map((_,t)=>Math.pow(lam,T-t-1));
+  const ws=w.reduce((a,b)=>a+b,0); return values.reduce((s,v,t)=>s+w[t]*v,0)/ws;
+}
+const mean=arr=>arr.reduce((a,b)=>a+b,0)/arr.length;
+
+/* ───────────────── DEFAULT SAMPLE DATA (from notebook) ───────────────── */
+const DEFAULTS={
+  // X1
+  p1_b:50000,p1_d:45000,p1_c:0.75,p1_t:3,p1_f2:0.7,p1_m:0.5,p1_p:0.75,p1_sim:12,p1_conf:8,
+  // X2
+  p2_r:0.8,p2_s:0.9,p2_p:0.7,p2_cs:1,p2_dc:0.6,p2_cr:0.2,p2_c2:0.8,p2_u:3,p2_fa:17,p2_fn:20,
+  // X3
+  p3_r:0.8,p3_d:1,p3_n:4,p3_o:0.8,p3_p:0.7,p3_nm:4,p3_ns:3,
+  // X4
+  p4_t:45,p4_t1:1,p4_t2:30,p4_ep:0.8,p4_nstep:1,p4_cp:0.3,
+  // X5
+  p5_n1:10,p5_n2:5,p5_n3:3,p5_n4:4,p5_n5:8,p5_n6:2,p5_n7:3,p5_n8:1,p5_n9:2,
+  p5_t:7,p5_v:1.5,p5_c:4,p5_m:1,
+  // X6
+  p6_seg:0.9,p6_emp:0.8,p6_rev:0.7,p6_tech:0.85,p6_geo:1.0,p6_gro:0.7,p6_fh:0.8,p6_dig:0.75,p6_lang:0.9,
+  // X7
+  p7_q:0.75,p7_p:0.8,p7_r:0.7,p7_s:1.0,p7_leads:40,p7_conv:22,
+  // X8
+  p8_n:3,p8_s:0.3,p8_d:0.8,p8_c:0.4,p8_k:0,p8_deals:30,p8_wins:18,
+  // X9
+  p9_pb:1.0,p9_rt:18,p9_nps:0.5,p9_es:0.5,p9_t:0.7,p9_rc:0.8,p9_n:0,
+  // X10
+  p10_ltv:1500000,p10_cac:400000,p10_cs:0.7,p10_b:0.6,p10_m:0.5,p10_e:0.65,p10_c:0.3,p10_sa:15,p10_ne:9,
+  // weekly + gates + mod
+  we:[0.3,0.4,0.5,0.55,0.7,0.8,0.85,0.9],
+  G1:1,G2:1,G3:1,mod:0.9
+};
+let state=JSON.parse(JSON.stringify(DEFAULTS));
+
+/* ───────────────── PARAMETER SCHEMA (drives UI generation) ───────────────── */
+// type: 'range' | 'num' | 'bool' ; for bool, range 0..1 step 1
+const SCHEMA=[
+ {id:'X1',title:'Money',sub:'Can they pay?',fields:[
+   {k:'p1_b',label:'Budget',hint:'Total budget the buyer can realistically spend',type:'num',pre:'₹',step:5000},
+   {k:'p1_d',label:'Deal value',hint:'Quoted price of this specific deal',type:'num',pre:'₹',step:5000},
+   {k:'p1_c',label:'Budget confirmation',hint:'0=none · 0.5=verbal · 0.75=written · 1=formal',type:'range',min:0,max:1,step:0.05},
+   {k:'p1_f2',label:'Funding security',hint:'0.3=unidentified · 0.7=project budget · 1=CapEx',type:'range',min:0,max:1,step:0.05},
+   {k:'p1_m',label:'Multi-year willingness',hint:'Openness to long-term commitment',type:'range',min:0,max:1,step:0.05},
+   {k:'p1_p',label:'Procurement simplicity',hint:'1=credit-card simple · 0.5=full RFP',type:'range',min:0.5,max:1,step:0.05},
+   {k:'p1_t',label:'Fiscal alignment (months)',hint:'Months until fiscal cycle aligns',type:'range',min:0,max:12,step:1},
+   {k:'p1_conf',label:'Confirmed-budget deals',hint:'Historical successes (evidence)',type:'range',min:0,max:50,step:1},
+   {k:'p1_sim',label:'Similar deals sampled',hint:'Historical sample size',type:'range',min:1,max:50,step:1},
+ ]},
+ {id:'X2',title:'Fit',sub:'Does it solve their problem?',fields:[
+   {k:'p2_r',label:'Industry match',hint:'Alignment with proven industries',type:'range',min:0,max:1,step:0.05},
+   {k:'p2_s',label:'Solution fit',hint:'How directly we solve their problem',type:'range',min:0,max:1,step:0.05},
+   {k:'p2_p',label:'Problem clarity',hint:'How well they articulate the problem',type:'range',min:0,max:1,step:0.05},
+   {k:'p2_dc',label:'Dissatisfaction',hint:'Pain with current solution',type:'range',min:0,max:1,step:0.05},
+   {k:'p2_cs',label:'Current solution exists',hint:'0=none · 0.5=partial · 1=replacement',type:'range',min:0,max:1,step:0.5},
+   {k:'p2_cr',label:'Custom work needed',hint:'0=none · 1=heavy custom',type:'range',min:0,max:1,step:0.05},
+   {k:'p2_c2',label:'Compliance fit',hint:'0=none · 0.5=partial · 1=full',type:'range',min:0,max:1,step:0.5},
+   {k:'p2_u',label:'Use cases articulated',hint:'Distinct use cases (count)',type:'range',min:0,max:10,step:1},
+   {k:'p2_fa',label:'Features available',hint:'Of the features they need',type:'num',step:1},
+   {k:'p2_fn',label:'Features needed',hint:'Total important features',type:'num',step:1},
+ ]},
+ {id:'X3',title:'Power',sub:'Talking to the decision-maker?',fields:[
+   {k:'p3_r',label:'Contact seniority',hint:'0=junior · 0.8=VP · 1=C-suite',type:'range',min:0,max:1,step:0.05},
+   {k:'p3_d',label:'Decision involvement',hint:'0=none · 0.5=influencer · 1=decision-maker',type:'range',min:0,max:1,step:0.5},
+   {k:'p3_n',label:'Stakeholders identified',hint:'Diminishing returns past ~5',type:'range',min:1,max:15,step:1},
+   {k:'p3_nm',label:'Stakeholders met',hint:'How many we have spoken to',type:'range',min:0,max:15,step:1},
+   {k:'p3_ns',label:'Stakeholders supportive',hint:'Actively backing us',type:'range',min:0,max:15,step:1},
+   {k:'p3_o',label:'Org alignment',hint:'Internal agreement on the priority',type:'range',min:0,max:1,step:0.05},
+   {k:'p3_p',label:'Access to senior buyer',hint:'Quality of access to budget holder',type:'range',min:0,max:1,step:0.05},
+ ]},
+ {id:'X4',title:'Momentum',sub:'Is the deal moving?',fields:[
+   {k:'p4_t',label:'Days until decision',hint:'Expected days to decide',type:'range',min:0,max:365,step:5},
+   {k:'p4_t1',label:'Trigger event active',hint:'External catalyst occurred?',type:'range',min:0,max:1,step:1},
+   {k:'p4_t2',label:'Days until trigger deadline',hint:'Urgency of the trigger',type:'range',min:0,max:180,step:5},
+   {k:'p4_ep',label:'Evaluation maturity',hint:'How structured their process is',type:'range',min:0,max:1,step:0.05},
+   {k:'p4_nstep',label:'Next step defined',hint:'Concrete next action agreed?',type:'range',min:0,max:1,step:1},
+   {k:'p4_cp',label:'Competing priorities',hint:'0=top priority · 1=heavily distracted',type:'range',min:0,max:1,step:0.05},
+ ]},
+ {id:'X5',title:'Engagement',sub:'How active are they?',fields:[
+   {k:'p5_n1',label:'Email opens',type:'range',min:0,max:100,step:1},
+   {k:'p5_n2',label:'Email replies',type:'range',min:0,max:50,step:1},
+   {k:'p5_n3',label:'Meetings held',type:'range',min:0,max:30,step:1},
+   {k:'p5_n4',label:'Calls',type:'range',min:0,max:30,step:1},
+   {k:'p5_n5',label:'Web sessions',type:'range',min:0,max:100,step:1},
+   {k:'p5_n6',label:'Downloads',type:'range',min:0,max:30,step:1},
+   {k:'p5_n7',label:'Pricing visits',type:'range',min:0,max:30,step:1},
+   {k:'p5_n8',label:'Demo requests',type:'range',min:0,max:10,step:1},
+   {k:'p5_n9',label:'Social engagement',type:'range',min:0,max:30,step:1},
+   {k:'p5_t',label:'Days since last contact',hint:'Higher = decay penalty',type:'range',min:0,max:180,step:1},
+   {k:'p5_v',label:'Velocity ratio',hint:'>1 = accelerating',type:'range',min:0,max:5,step:0.1},
+   {k:'p5_c',label:'Channel diversity',hint:'Distinct channels used',type:'range',min:0,max:9,step:1},
+   {k:'p5_m',label:'Negative signals',hint:'No-shows, unsubscribes',type:'range',min:0,max:10,step:1},
+   {k:'we',label:'Weekly engagement (8 wks)',hint:'0–1 scores, oldest→newest, for EWMA momentum',type:'weekly'},
+ ]},
+ {id:'X6',title:'Company Fit',sub:'Right kind of account?',fields:[
+   {k:'p6_seg',label:'Segment match (ICP)',type:'range',min:0,max:1,step:0.05},
+   {k:'p6_emp',label:'Employee size fit',type:'range',min:0,max:1,step:0.05},
+   {k:'p6_rev',label:'Revenue fit',type:'range',min:0,max:1,step:0.05},
+   {k:'p6_tech',label:'Tech stack compatibility',type:'range',min:0,max:1,step:0.05},
+   {k:'p6_geo',label:'Geographic alignment',type:'range',min:0,max:1,step:0.05},
+   {k:'p6_gro',label:'Growth trajectory',type:'range',min:0,max:1,step:0.05},
+   {k:'p6_fh',label:'Financial health',type:'range',min:0,max:1,step:0.05},
+   {k:'p6_dig',label:'Digital readiness',type:'range',min:0,max:1,step:0.05},
+   {k:'p6_lang',label:'Language/culture fit',type:'range',min:0,max:1,step:0.05},
+ ]},
+ {id:'X7',title:'Source',sub:'Where did the lead come from?',fields:[
+   {k:'p7_q',label:'Source channel quality',hint:'Referral=high · cold list=low',type:'range',min:0,max:1,step:0.05},
+   {k:'p7_p',label:'Campaign/asset quality',type:'range',min:0,max:1,step:0.05},
+   {k:'p7_r',label:'Data richness at entry',type:'range',min:0,max:1,step:0.05},
+   {k:'p7_s',label:'Inbound vs outbound',hint:'1=inbound · 0=cold outbound',type:'range',min:0,max:1,step:0.05},
+   {k:'p7_conv',label:'Converted from source',hint:'Historical successes',type:'range',min:0,max:100,step:1},
+   {k:'p7_leads',label:'Leads from source',hint:'Historical sample',type:'range',min:1,max:200,step:1},
+ ]},
+ {id:'X8',title:'Edge',sub:'Why us over rivals?',fields:[
+   {k:'p8_k',label:'Sole vendor',hint:'1 = only vendor → score 1.0',type:'range',min:0,max:1,step:1},
+   {k:'p8_n',label:'Competitors evaluated',type:'range',min:0,max:10,step:1},
+   {k:'p8_d',label:'Differentiation',type:'range',min:0,max:1,step:0.05},
+   {k:'p8_s',label:'Incumbent strength',hint:'How entrenched the current vendor is',type:'range',min:0,max:1,step:0.05},
+   {k:'p8_c',label:'Switching cost',hint:'0=trivial · 1=massive',type:'range',min:0,max:1,step:0.05},
+   {k:'p8_wins',label:'Wins in sample',type:'range',min:0,max:200,step:1},
+   {k:'p8_deals',label:'Competitive deals sampled',type:'range',min:1,max:200,step:1},
+ ]},
+ {id:'X9',title:'Trust',sub:'Existing relationship equity?',fields:[
+   {k:'p9_pb',label:'Previous relationship',hint:'0=new · 0.5=lapsed · 1=active',type:'range',min:0,max:1,step:0.5},
+   {k:'p9_rt',label:'Relationship tenure (months)',type:'range',min:0,max:120,step:1},
+   {k:'p9_nps',label:'NPS proxy',hint:'-1=detractor · 0=passive · 1=promoter',type:'range',min:-1,max:1,step:0.1},
+   {k:'p9_es',label:'Executive sponsor',hint:'0=none · 1=strong relationship',type:'range',min:0,max:1,step:0.05},
+   {k:'p9_t',label:'Trust indicators',type:'range',min:0,max:1,step:0.05},
+   {k:'p9_rc',label:'Reference customer',type:'range',min:0,max:1,step:0.05},
+   {k:'p9_n',label:'Negative experience',hint:'0=none · 0.5=minor · 1=serious',type:'range',min:0,max:1,step:0.5},
+ ]},
+ {id:'X10',title:'Strategic Value',sub:'Long-term account upside?',fields:[
+   {k:'p10_ltv',label:'Estimated LTV',type:'num',pre:'₹',step:50000},
+   {k:'p10_cac',label:'Acquisition cost (CAC)',type:'num',pre:'₹',step:5000},
+   {k:'p10_cs',label:'Cross-sell potential',type:'range',min:0,max:1,step:0.05},
+   {k:'p10_b',label:'Brand value of client',type:'range',min:0,max:1,step:0.05},
+   {k:'p10_m',label:'Market expansion',hint:'0=no · 0.5=strengthens · 1=new market',type:'range',min:0,max:1,step:0.5},
+   {k:'p10_e',label:'Expansion revenue prob.',type:'range',min:0,max:1,step:0.05},
+   {k:'p10_c',label:'Churn risk',hint:'0=sticky · 1=high churn',type:'range',min:0,max:1,step:0.05},
+   {k:'p10_ne',label:'Expanded accounts',hint:'Historical successes',type:'range',min:0,max:100,step:1},
+   {k:'p10_sa',label:'Similar accounts sampled',type:'range',min:1,max:100,step:1},
+ ]},
+];
+
+/* ───────────────── CHOQUET CAPACITY (from notebook) ───────────────── */
+const A=[0.155,0.125,0.200,0.125,0.120,0.060,0.030,0.055,0.055,0.075];
+const AIJ=new Map([
+  ['0,3',0.025],['0,2',0.020],['1,4',0.015],['2,3',0.015],
+  ['0,7',0.015],['8,9',0.010],['4,8',-0.010],['5,6',-0.010],['1,5',-0.005]
+]);
+function mu(S){
+  let v=S.reduce((s,i)=>s+A[i],0);
+  AIJ.forEach((co,key)=>{const[i,j]=key.split(',').map(Number);if(S.includes(i)&&S.includes(j))v+=co;});
+  return v;
+}
+const MU_N=mu([0,1,2,3,4,5,6,7,8,9]);
+function choquet(scores){
+  const idx=scores.map((_,i)=>i).sort((i,j)=>scores[i]-scores[j]);
+  let r=0;
+  for(let k=0;k<scores.length;k++){
+    const sk=scores[idx[k]], sp=k>0?scores[idx[k-1]]:0;
+    r+=(sk-sp)*mu(idx.slice(k));
+  }
+  return r;
+}
+
+/* ───────────────── SCORE ENGINE (faithful port of Lead_Score) ───────────────── */
+function compute(s){
+  // X1 — Financial
+  const Br=sigmoid(Math.min(s.p1_b/Math.max(1,s.p1_d),1),0.70,10);
+  const nSim=Math.max(1,s.p1_sim), nConf=clamp(s.p1_conf,0,nSim);
+  const C=0.5*s.p1_c+0.5*bci(nConf,nSim);
+  const F1=edp(s.p1_t,0.25);
+  const X1=hrc([Br,C,F1,s.p1_f2,s.p1_m,s.p1_p],[0.45,0.17,0.12,0.12,0.08,0.06]);
+
+  // X2 — Fit
+  const Ttech=bci(Math.max(0,s.p2_fa),Math.max(1,s.p2_fn));
+  const Fpos=hrc([s.p2_r,s.p2_s,s.p2_p,Ttech],[0.25,0.30,0.20,0.25]);
+  const dissat=s.p2_dc*s.p2_cs;
+  const Fneg=hrc([1-0.4*dissat,1-0.25*s.p2_cr,edp(1-s.p2_c2,3.0)],[0.40,0.25,0.35]);
+  const Uscore=lnNorm(s.p2_u,6);
+  const X2=hrc([Fpos,Fneg,Uscore],[0.45,0.40,0.15]);
+
+  // X3 — Authority
+  const Ac=s.p3_r*s.p3_d;
+  const Nscore=lnNorm(s.p3_n,5);
+  const Oev=bci(Math.min(s.p3_ns,s.p3_nm),Math.max(1,s.p3_nm));
+  const Ocomb=0.5*s.p3_o+0.5*Oev;
+  const X3=hrc([Ac,Nscore,Ocomb,s.p3_p],[0.30,0.30,0.25,0.15]);
+
+  // X4 — Timeline
+  const Tprime=edp(s.p4_t,0.015);
+  const Utrig=s.p4_t1===1?edp(s.p4_t2,0.01):0;
+  const Pproc=0.5*s.p4_ep+0.5*s.p4_nstep;
+  const X4=hrc([Tprime,Utrig,Pproc,1-s.p4_cp],[0.45,0.15,0.25,0.15]);
+
+  // X5 — Engagement
+  const caps=[20,10,6,8,15,8,5,3,5];
+  const raw=[s.p5_n1,s.p5_n2,s.p5_n3,s.p5_n4,s.p5_n5,s.p5_n6,s.p5_n7,s.p5_n8,s.p5_n9];
+  const e=raw.map((v,i)=>lnNorm(v,caps[i]));
+  const Ecomp=hrc(e,[0.05,0.10,0.18,0.12,0.08,0.10,0.14,0.18,0.05]);
+  const Rdecay=edp(s.p5_t,0.033);
+  const wk=s.we.slice(0,8);
+  const Vbonus=Math.min(Math.max(0,(ewmaMean(wk,0.85)-mean(wk))/Math.max(mean(wk),0.01)),1)*0.15;
+  const Dchan=lnNorm(s.p5_c,5)*0.10;
+  const Npen=edp(s.p5_m,0.3);
+  const Ecore=hrc([Ecomp*Rdecay,Vbonus,Dchan],[0.75,0.15,0.10]);
+  const X5=sigmoid(Ecore*Math.sqrt(Npen),0.3,8);
+
+  // X6 — Company fit
+  const X6raw=hrc([s.p6_seg,s.p6_emp,s.p6_rev,s.p6_tech,s.p6_geo,s.p6_gro,s.p6_fh,s.p6_dig,s.p6_lang],
+    [0.20,0.10,0.10,0.20,0.05,0.10,0.10,0.10,0.05]);
+  const X6=sigmoid(X6raw,0.70,8);
+
+  // X7 — Source
+  const Q=0.5*s.p7_q+0.5*bci(s.p7_conv,Math.max(1,s.p7_leads));
+  const X7=hrc([Q,s.p7_p,s.p7_r,s.p7_s],[0.55,0.15,0.10,0.20]);
+
+  // X8 — Competitive
+  let X8;
+  if(s.p8_k===1){X8=1.0;}
+  else{
+    const Ncomp=edp(s.p8_n,0.18);
+    const Wbci=bci(s.p8_wins,Math.max(1,s.p8_deals));
+    const Cd=edp(0.5*s.p8_s+0.5*s.p8_c,1.0);
+    X8=hrc([Ncomp,Wbci,Cd,s.p8_d],[0.25,0.30,0.20,0.25]);
+  }
+
+  // X9 — Relationship
+  const Rten=s.p9_pb*lnNorm(s.p9_rt,36);
+  const Rtrust=hrc([s.p9_es,s.p9_t,s.p9_rc,Math.max(s.p9_nps,0)],[0.30,0.30,0.20,0.20]);
+  const Rneg=edp(s.p9_n,1.5);
+  const X9=Rneg*hrc([Rten,Rtrust],[0.40,0.60]);
+
+  // X10 — Strategic
+  const Vltv=sigmoid(Math.max(1,s.p10_ltv)/Math.max(1,s.p10_cac),3.0,1.5);
+  const Cs=0.5*s.p10_cs+0.5*bci(s.p10_ne,Math.max(1,s.p10_sa));
+  const Vstrat=hrc([s.p10_b,s.p10_m,s.p10_e],[0.30,0.40,0.30]);
+  const Vchurn=edp(s.p10_c,1.2);
+  const X10=Vchurn*hrc([Vltv,Cs,Vstrat],[0.35,0.25,0.40]);
+
+  const rawX=[X1,X2,X3,X4,X5,X6,X7,X8,X9,X10].map(v=>clamp(v));
+  // Pre-process: sigmoid on indices 3,5,8
+  const Xfinal=rawX.map((v,i)=>([3,5,8].includes(i)?sigmoid(v,0.50,8):v));
+
+  const Cmu=choquet(Xfinal);
+  const G=s.G1*s.G2*s.G3;
+  const score=clamp(100*G*s.mod*(Cmu/MU_N),0,100);
+  return {rawX,Xfinal,Cmu,G,mod:s.mod,score};
+}
+
+/* ───────────────── UI BUILD ───────────────── */
+const PNAMES=['Financial Qualification','Need & Product Fit','Authority & Decision','Timeline & Urgency',
+  'Engagement Behaviour','Company & Market Fit','Lead Source Quality','Competitive Landscape',
+  'Relationship & Trust','Strategic & Lifetime Value'];
+const COMP_TAGS=['Money','Fit','Power','Momentum','Engage','Company','Source','Edge','Trust','Strategic'];
+const colorFor=v=>v>=0.66?'#10b981':v>=0.33?'#f59e0b':'#ef4444';
+const fmtMoney=v=>'₹'+Number(v).toLocaleString('en-IN');
+
+function buildParams(){
+  const grid=$('params-grid');
+  SCHEMA.forEach(p=>{
+    const card=document.createElement('div'); card.className='pcard';
+    let body='';
+    p.fields.forEach(f=>{
+      if(f.type==='weekly'){
+        let cells='';
+        DEFAULTS.we.forEach((v,i)=>{cells+=`<div class="wc"><label>W${i+1}</label><input type="number" data-we="${i}" value="${state.we[i]}" min="0" max="1" step="0.05"></div>`;});
+        body+=`<div class="field"><div class="field-label">${f.label}</div><div class="field-hint">${f.hint||''}</div><div class="weekly">${cells}</div></div>`;
+      } else if(f.type==='num'){
+        body+=`<div class="field"><div class="field-label">${f.label}</div>${f.hint?`<div class="field-hint">${f.hint}</div>`:''}
+          <div class="num-inline">${f.pre?`<span class="pre">${f.pre}</span>`:''}<input type="number" data-key="${f.k}" value="${state[f.k]}" step="${f.step||1}"></div></div>`;
+      } else {
+        body+=`<div class="field"><div class="field-top"><div><div class="field-label">${f.label}</div>${f.hint?`<div class="field-hint">${f.hint}</div>`:''}</div><span class="field-val" id="v_${f.k}">${state[f.k]}</span></div>
+          <input type="range" data-key="${f.k}" min="${f.min}" max="${f.max}" step="${f.step}" value="${state[f.k]}"></div>`;
+      }
+    });
+    card.innerHTML=`
+      <div class="pcard-head">
+        <div><div class="pcard-id">${p.id} · ${PNAMES[SCHEMA.indexOf(p)]}</div>
+        <div class="pcard-title">${p.title}</div><div class="pcard-q">${p.sub}</div></div>
+        <div class="pcard-score"><div class="v" id="ps_${p.id}">—</div><div class="w">a=${A[SCHEMA.indexOf(p)].toFixed(3)}</div></div>
+      </div>
+      <div class="pcard-body">${body}
+        <div class="math-toggle" data-math="${p.id}">▸ Show the math</div>
+        <div class="math-box" id="math_${p.id}"></div>
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+
+/* radar */
+function buildRadarBase(){
+  const svg=$('radar'); const cx=160,cy=140,R=105,N=10;
+  let g='';
+  [0.25,0.5,0.75,1].forEach(r=>{
+    let pts='';
+    for(let i=0;i<N;i++){const a=(-Math.PI/2)+i*2*Math.PI/N; pts+=`${cx+R*r*Math.cos(a)},${cy+R*r*Math.sin(a)} `;}
+    g+=`<polygon points="${pts}" fill="none" stroke="#2a3344" stroke-width="1"/>`;
+  });
+  for(let i=0;i<N;i++){
+    const a=(-Math.PI/2)+i*2*Math.PI/N;
+    g+=`<line x1="${cx}" y1="${cy}" x2="${cx+R*Math.cos(a)}" y2="${cy+R*Math.sin(a)}" stroke="#2a3344" stroke-width="1"/>`;
+    const lx=cx+(R+16)*Math.cos(a), ly=cy+(R+16)*Math.sin(a);
+    g+=`<text x="${lx}" y="${ly}" fill="#9aa7bd" font-size="9" font-weight="700" text-anchor="middle" dominant-baseline="middle">X${i+1}</text>`;
+  }
+  g+=`<polygon id="radar-poly" points="" fill="rgba(99,102,241,.25)" stroke="#6366f1" stroke-width="2"/>`;
+  svg.innerHTML=g;
+}
+function updateRadar(rawX){
+  const cx=160,cy=140,R=105,N=10; let pts='';
+  for(let i=0;i<N;i++){const a=(-Math.PI/2)+i*2*Math.PI/N;const r=R*rawX[i];pts+=`${cx+r*Math.cos(a)},${cy+r*Math.sin(a)} `;}
+  $('radar-poly').setAttribute('points',pts);
+  $('radar-legend').innerHTML=rawX.map((v,i)=>`<div class="rl"><span>X${i+1} ${COMP_TAGS[i]}</span><b>${(v*100).toFixed(0)}%</b></div>`).join('');
+}
+
+/* ───────────────── MATH EXPLAINERS ───────────────── */
+function mathHTML(id,s,r){
+  const row=(l,v)=>`<div class="ml"><span>${l}</span><b>${v}</b></div>`;
+  switch(id){
+    case 'X1':return row('Budget ratio σ(min(B/D,1))',sigmoid(Math.min(s.p1_b/Math.max(1,s.p1_d),1),.70,10).toFixed(3))
+      +row('Confirmation (stated·.5 + BCI·.5)',(0.5*s.p1_c+0.5*bci(clamp(s.p1_conf,0,s.p1_sim),Math.max(1,s.p1_sim))).toFixed(3))
+      +row('Fiscal decay e^(−0.25·T)',edp(s.p1_t,0.25).toFixed(3))
+      +row('→ X1 via HRC',r.rawX[0].toFixed(3));
+    case 'X2':return row('Tech coverage BCI(fa,fn)',bci(s.p2_fa,Math.max(1,s.p2_fn)).toFixed(3))
+      +row('Compliance penalty e^(−3·gap)',edp(1-s.p2_c2,3).toFixed(3))
+      +row('→ X2 via nested HRC',r.rawX[1].toFixed(3));
+    case 'X3':return row('Authority R×D',(s.p3_r*s.p3_d).toFixed(3))
+      +row('Stakeholders ln_norm(N,5)',lnNorm(s.p3_n,5).toFixed(3))
+      +row('Support BCI(supp,met)',bci(Math.min(s.p3_ns,s.p3_nm),Math.max(1,s.p3_nm)).toFixed(3))
+      +row('→ X3 via HRC',r.rawX[2].toFixed(3));
+    case 'X4':return row('Timeline e^(−0.015·days)',edp(s.p4_t,0.015).toFixed(3))
+      +row('Trigger urgency',(s.p4_t1?edp(s.p4_t2,0.01):0).toFixed(3))
+      +row('Process maturity',( .5*s.p4_ep+.5*s.p4_nstep).toFixed(3))
+      +row('→ X4 via HRC',r.rawX[3].toFixed(3));
+    case 'X5':return row('Recency decay e^(−0.033·T)',edp(s.p5_t,0.033).toFixed(3))
+      +row('Negative penalty √(e^(−0.3·M))',Math.sqrt(edp(s.p5_m,0.3)).toFixed(3))
+      +row('→ X5 via sigmoid',r.rawX[4].toFixed(3));
+    case 'X6':return row('ICP composite (pre-sigmoid)',hrc([s.p6_seg,s.p6_emp,s.p6_rev,s.p6_tech,s.p6_geo,s.p6_gro,s.p6_fh,s.p6_dig,s.p6_lang],[.2,.1,.1,.2,.05,.1,.1,.1,.05]).toFixed(3))
+      +row('→ X6 σ(raw,0.70,8)',r.rawX[5].toFixed(3));
+    case 'X7':return row('Source quality (stated·.5 + BCI·.5)',(0.5*s.p7_q+0.5*bci(s.p7_conv,Math.max(1,s.p7_leads))).toFixed(3))
+      +row('→ X7 via HRC',r.rawX[6].toFixed(3));
+    case 'X8':return (s.p8_k===1?row('Sole vendor','→ X8 = 1.000'):
+        row('Competitor decay e^(−0.18·N)',edp(s.p8_n,0.18).toFixed(3))
+       +row('Win rate BCI(wins,deals)',bci(s.p8_wins,Math.max(1,s.p8_deals)).toFixed(3))
+       +row('→ X8 via HRC',r.rawX[7].toFixed(3)));
+    case 'X9':return row('Tenure Pb·ln_norm(Rt,36)',(s.p9_pb*lnNorm(s.p9_rt,36)).toFixed(3))
+      +row('Negative penalty e^(−1.5·N)',edp(s.p9_n,1.5).toFixed(3))
+      +row('→ X9',r.rawX[8].toFixed(3));
+    case 'X10':return row('LTV:CAC σ(ratio,3,1.5)',sigmoid(s.p10_ltv/Math.max(1,s.p10_cac),3,1.5).toFixed(3))
+      +row('Churn penalty e^(−1.2·C)',edp(s.p10_c,1.2).toFixed(3))
+      +row('→ X10',r.rawX[9].toFixed(3));
+  }
+  return '';
+}
+
+/* ───────────────── RENDER ───────────────── */
+const ARC_LEN=Math.PI*110; // semicircle length
+function render(){
+  const r=compute(state);
+  const {rawX,G,mod,score}=r;
+
+  // gauge
+  const frac=score/100, col=colorFor(frac);
+  $('gauge-arc').setAttribute('stroke-dasharray',`${ARC_LEN*frac} 1000`);
+  const ang=-90+frac*180, rad=ang*Math.PI/180;
+  $('gauge-needle').setAttribute('x2',140+88*Math.cos(rad));
+  $('gauge-needle').setAttribute('y2',150+88*Math.sin(rad));
+  $('g-score').textContent=score.toFixed(2); $('g-score').style.color=col;
+  const tier=score>=80?'EXCEPTIONAL':score>=66?'STRONG':score>=45?'QUALIFIED':score>=25?'DEVELOPING':'COLD';
+  const b=$('g-badge'); b.textContent=tier; b.style.background=col+'22'; b.style.color=col;
+
+  // composition (contribution share toward gated/modified score)
+  const contribs=rawX.map((v,i)=>v*A[i]);
+  const totC=contribs.reduce((a,b)=>a+b,0)||1;
+  $('comp-list').innerHTML=rawX.map((v,i)=>{
+    const share=contribs[i]/totC, pts=score*share;
+    return `<div class="comp-row">
+      <div><span class="comp-tag">X${i+1} ${COMP_TAGS[i]}</span><span class="comp-sub">${(v*100).toFixed(0)}% · a=${A[i].toFixed(2)}</span></div>
+      <div class="comp-track"><div class="comp-fill" style="width:${(share*100).toFixed(1)}%;background:${colorFor(v)}"></div></div>
+      <div class="comp-num">+${pts.toFixed(2)}</div></div>`;
+  }).join('');
+
+  // radar
+  updateRadar(rawX);
+
+  // breakdown table
+  $('xtable-body').innerHTML=rawX.map((v,i)=>{
+    const c=colorFor(v), pct=(v*100).toFixed(1), contrib=(v*A[i]*100).toFixed(2);
+    return `<tr><td><span style="color:var(--dim);font-size:10px">X${i+1}</span> ${PNAMES[i]}</td>
+      <td style="color:${c};font-weight:700">${pct}</td>
+      <td style="color:var(--dim)">${A[i].toFixed(3)}</td>
+      <td style="color:${c};font-weight:600">${contrib}</td>
+      <td><div class="xbar"><div class="xbar-fill" style="width:${pct}%;background:${c}"></div></div></td></tr>`;
+  }).join('');
+
+  // per-card scores
+  SCHEMA.forEach((p,i)=>{const el=$('ps_'+p.id);el.textContent=(rawX[i]*100).toFixed(1);el.style.color=colorFor(rawX[i]);
+    const mb=$('math_'+p.id); if(mb.classList.contains('open'))mb.innerHTML=mathHTML(p.id,state,r);});
+
+  // gates UI
+  ['G1','G2','G3'].forEach(g=>{
+    const pass=state[g]===1;
+    $('pill-'+g).textContent=pass?'PASS':'FAIL';
+    $('pill-'+g).className='pill '+(pass?'pass':'fail');
+    $('gate-'+g).classList.toggle('fail',!pass);
+  });
+  $('mod-val').textContent=mod.toFixed(2);
+  $('mod-desc').textContent=mod>=0.95?'Minimal friction — clean deal.':mod>=0.8?'Some friction — complex procurement, manageable.':mod>=0.65?'Notable friction — heavy process or legal load.':'Severe friction — execution risk is high.';
+}
+
+/* ───────────────── EVENTS ───────────────── */
+let raf=false;
+function schedule(){if(raf)return;raf=true;requestAnimationFrame(()=>{raf=false;render();});}
+
+document.addEventListener('input',e=>{
+  const t=e.target;
+  if(t.dataset.key){
+    const v=parseFloat(t.value); if(!isNaN(v))state[t.dataset.key]=v;
+    const lbl=$('v_'+t.dataset.key); if(lbl)lbl.textContent=Number.isInteger(v)?v:v.toFixed(2);
+    schedule();
+  } else if(t.dataset.we!==undefined){
+    const v=parseFloat(t.value); state.we[+t.dataset.we]=isNaN(v)?0:v; schedule();
+  } else if(t.classList.contains('gate-input')){
+    state[t.dataset.gate]=t.checked?1:0; schedule();
+  } else if(t.id==='mod'){ state.mod=parseFloat(t.value); schedule(); }
+});
+
+document.addEventListener('click',e=>{
+  const m=e.target.closest('[data-math]');
+  if(m){const id=m.dataset.math;const box=$('math_'+id);box.classList.toggle('open');
+    m.textContent=(box.classList.contains('open')?'▾ Hide':'▸ Show')+' the math';
+    if(box.classList.contains('open'))box.innerHTML=mathHTML(id,state,compute(state));}
+});
+
+function syncInputs(){
+  document.querySelectorAll('[data-key]').forEach(el=>{el.value=state[el.dataset.key];
+    const lbl=$('v_'+el.dataset.key); if(lbl){const v=parseFloat(el.value);lbl.textContent=Number.isInteger(v)?v:v.toFixed(2);}});
+  document.querySelectorAll('[data-we]').forEach(el=>el.value=state.we[+el.dataset.we]);
+  document.querySelectorAll('.gate-input').forEach(el=>el.checked=state[el.dataset.gate]===1);
+  $('mod').value=state.mod;
+}
+function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1600);}
+
+$('btn-reset').onclick=()=>{state=JSON.parse(JSON.stringify(DEFAULTS));syncInputs();render();toast('Reset to sample scenario');};
+$('btn-rand').onclick=()=>{
+  SCHEMA.forEach(p=>p.fields.forEach(f=>{
+    if(f.type==='range'){const steps=Math.round((f.max-f.min)/f.step);state[f.k]=+(f.min+Math.round(Math.random()*steps)*f.step).toFixed(4);}
+    else if(f.type==='num'){state[f.k]=Math.round((f.step*(2+Math.random()*18)));}
+    else if(f.type==='weekly'){state.we=Array.from({length:8},()=>+(Math.random()).toFixed(2));}
+  }));
+  state.p1_b=Math.round(20000+Math.random()*80000);state.p1_d=Math.round(20000+Math.random()*70000);
+  state.p10_ltv=Math.round(200000+Math.random()*2000000);state.p10_cac=Math.round(50000+Math.random()*400000);
+  syncInputs();render();toast('Randomized scenario');
+};
+$('btn-copy').onclick=()=>{
+  const r=compute(state);
+  const txt=`Lead Score: ${r.score.toFixed(2)}/100\n`+
+    r.rawX.map((v,i)=>`X${i+1} ${PNAMES[i]}: ${(v*100).toFixed(1)}`).join('\n')+
+    `\nGate: ${r.G?'PASS':'FAIL'} · Modifier: ${r.mod}`;
+  navigator.clipboard.writeText(txt).then(()=>toast('Summary copied'));
+};
+$('btn-export').onclick=()=>{
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='lead-scenario.json';a.click();
+  toast('Scenario exported');
+};
+$('file-import').onchange=e=>{
+  const f=e.target.files[0]; if(!f)return; const rd=new FileReader();
+  rd.onload=()=>{try{const obj=JSON.parse(rd.result);Object.assign(state,obj);if(!Array.isArray(state.we))state.we=DEFAULTS.we.slice();syncInputs();render();toast('Scenario imported');}catch{toast('Invalid file');}};
+  rd.readAsText(f);
+};
+
+/* INIT */
+buildParams(); buildRadarBase(); syncInputs(); render();
+})();
+</script>
+</body>
+</html>
