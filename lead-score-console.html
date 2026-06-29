@@ -1,819 +1,906 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Lead Score Console</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lead Score Model</title>
 <style>
-  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-  :root{
-    --bg:#0b0e14; --panel:#141925; --panel2:#1b2230; --card:#1f2737; --border:#2a3344;
-    --accent:#6366f1; --accent2:#8b5cf6; --cyan:#22d3ee;
-    --green:#10b981; --yellow:#f59e0b; --orange:#fb923c; --red:#ef4444;
-    --text:#e6edf6; --muted:#9aa7bd; --dim:#64748b;
-    --shadow:0 10px 30px rgba(0,0,0,.4);
+  :root {
+    --bg: #0b0e14;
+    --panel: #141925;
+    --panel-2: #1b2231;
+    --border: #283142;
+    --text: #e6ebf2;
+    --muted: #8b97a8;
+    --accent: #4f9cff;
+    --accent-2: #22d3a7;
+    --warn: #f5a623;
+    --bad: #ef5d6e;
+    --good: #34d399;
+    --cold: #5b6577;
+    --dev: #f5a623;
+    --qual: #4f9cff;
+    --strong: #22d3a7;
+    --exc: #a855f7;
+    --radius: 14px;
+    --shadow: 0 8px 30px rgba(0,0,0,.35);
   }
-  html{font-size:14px}
-  body{
-    background:radial-gradient(1200px 600px at 80% -10%,rgba(99,102,241,.12),transparent 60%),
-               radial-gradient(900px 500px at -10% 110%,rgba(34,211,238,.08),transparent 55%),
-               var(--bg);
-    color:var(--text);
-    font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-    min-height:100vh;line-height:1.5;
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: radial-gradient(1200px 600px at 80% -10%, #182238 0%, var(--bg) 55%);
+    color: var(--text);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
   }
-  .wrap{max-width:1360px;margin:0 auto;padding:24px 24px 80px}
+  header.app {
+    padding: 28px 32px 18px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(20,25,37,.9), rgba(20,25,37,.4));
+    backdrop-filter: blur(6px);
+    position: sticky; top: 0; z-index: 50;
+  }
+  .eyebrow {
+    font-size: 11px; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--accent-2); font-weight: 700; margin-bottom: 6px;
+  }
+  header.app h1 { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -.01em; }
+  header.app p { margin: 6px 0 0; color: var(--muted); max-width: 760px; font-size: 14px; }
+  .toolbar { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 10px; }
+  .btn {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
+    padding: 8px 14px; border-radius: 9px; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: .15s; display: inline-flex; align-items: center; gap: 7px;
+  }
+  .btn:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .btn.primary { background: linear-gradient(135deg, var(--accent), #3a7fe0); border-color: transparent; }
 
-  /* Header */
-  .topbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px}
-  .brand{display:flex;flex-direction:column;gap:3px}
-  .brand .kicker{font-size:10px;letter-spacing:2.5px;color:var(--accent);font-weight:700;text-transform:uppercase}
-  .brand h1{font-size:22px;font-weight:700;letter-spacing:.3px}
-  .brand p{font-size:12px;color:var(--muted);max-width:560px;margin-top:2px}
-  .actions{display:flex;flex-wrap:wrap;gap:8px}
-  .btn{
-    font-size:12px;font-weight:600;padding:8px 14px;border-radius:9px;cursor:pointer;
-    background:var(--panel2);border:1px solid var(--border);color:var(--text);
-    transition:border-color .15s,background .15s,transform .1s;display:inline-flex;align-items:center;gap:6px;
-  }
-  .btn:hover{border-color:var(--accent);background:rgba(99,102,241,.1)}
-  .btn:active{transform:translateY(1px)}
-  .btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent}
-  .btn.danger:hover{border-color:var(--red);background:rgba(239,68,68,.1)}
+  .layout { display: grid; grid-template-columns: 1fr 380px; gap: 22px; padding: 24px 32px 60px; align-items: start; }
+  @media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } }
 
-  /* Top grid: gauge + gates + composition */
-  .top-grid{display:grid;grid-template-columns:340px 1fr;gap:18px;margin-bottom:18px}
-  .panel{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow)}
-  .panel-pad{padding:20px}
-  .panel-title{font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--dim);font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px}
-  .panel-title::before{content:'';width:3px;height:13px;background:var(--accent);border-radius:2px}
+  .col-right { position: sticky; top: 150px; display: flex; flex-direction: column; gap: 18px; }
+  @media (max-width: 1100px) { .col-right { position: static; } }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
+  }
+  .card-head {
+    padding: 14px 18px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .card-head h2 { margin: 0; font-size: 15px; font-weight: 700; }
+  .card-head .sub { font-size: 11px; color: var(--muted); letter-spacing: .12em; text-transform: uppercase; }
+  .card-body { padding: 18px; }
 
   /* Gauge */
-  .gauge-card{display:flex;flex-direction:column;align-items:center;justify-content:center}
-  .gauge-wrap{position:relative;width:280px;height:170px}
-  .gauge-wrap svg{width:280px;height:170px;display:block;overflow:visible}
-  .gauge-center{position:absolute;left:0;right:0;bottom:6px;text-align:center}
-  .gauge-score{font-size:46px;font-weight:800;line-height:1;transition:color .4s}
-  .gauge-of{font-size:11px;color:var(--dim);margin-top:2px}
-  .gauge-badge{margin-top:10px;font-size:12px;font-weight:700;letter-spacing:1px;padding:5px 16px;border-radius:20px;transition:all .4s}
-  .gauge-scale{display:flex;justify-content:space-between;width:240px;margin-top:14px;font-size:9px;color:var(--dim);font-weight:600;letter-spacing:.4px}
+  .gauge-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .gauge-score { font-size: 52px; font-weight: 800; letter-spacing: -.02em; line-height: 1; }
+  .gauge-band { font-size: 13px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; padding: 4px 12px; border-radius: 20px; }
+  .gauge-meta { font-size: 12px; color: var(--muted); }
 
   /* Gates */
-  .gates-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
-  .gate{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 15px;transition:border-color .2s}
-  .gate.fail{border-color:rgba(239,68,68,.5);background:rgba(239,68,68,.06)}
-  .gate-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
-  .gate-name{font-size:12px;font-weight:700}
-  .gate-desc{font-size:11px;color:var(--muted);line-height:1.4;margin-bottom:10px}
-  .pill{font-size:9.5px;font-weight:800;letter-spacing:.6px;padding:3px 9px;border-radius:5px}
-  .pill.pass{background:rgba(16,185,129,.16);color:var(--green)}
-  .pill.fail{background:rgba(239,68,68,.18);color:var(--red)}
-  .switch{position:relative;display:inline-flex;align-items:center;cursor:pointer;gap:8px;font-size:11px;color:var(--muted)}
-  .switch input{display:none}
-  .track{width:38px;height:20px;background:var(--border);border-radius:20px;position:relative;transition:background .2s;flex-shrink:0}
-  .track::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .2s}
-  .switch input:checked + .track{background:var(--green)}
-  .switch input:checked + .track::after{transform:translateX(18px)}
-  .mod-row{display:flex;align-items:center;gap:12px;margin-top:8px}
-  .mod-row input[type=range]{flex:1}
-  .mod-val{font-size:14px;font-weight:700;color:var(--cyan);min-width:46px;text-align:right}
+  .gate-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .gate {
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 11px 12px; cursor: pointer; transition: .15s; user-select: none;
+  }
+  .gate:hover { border-color: var(--accent); }
+  .gate .g-top { display: flex; align-items: center; justify-content: space-between; }
+  .gate .g-name { font-weight: 700; font-size: 13px; }
+  .gate .g-desc { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .pill { font-size: 10px; font-weight: 800; padding: 3px 9px; border-radius: 20px; letter-spacing: .08em; }
+  .pill.pass { background: rgba(52,211,153,.16); color: var(--good); }
+  .pill.fail { background: rgba(239,93,110,.18); color: var(--bad); }
 
   /* Composition bars */
-  .comp-list{display:flex;flex-direction:column;gap:12px;margin-top:4px}
-  .comp-row{display:grid;grid-template-columns:96px 1fr 64px;align-items:center;gap:12px}
-  .comp-tag{font-size:12px;font-weight:700}
-  .comp-sub{font-size:9px;color:var(--dim);font-weight:500;display:block;margin-top:1px}
-  .comp-track{height:9px;background:var(--border);border-radius:6px;overflow:hidden}
-  .comp-fill{height:100%;border-radius:6px;transition:width .5s cubic-bezier(.4,0,.2,1),background .3s}
-  .comp-num{font-size:13px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+  .comp-row { display: flex; align-items: center; gap: 12px; margin-bottom: 11px; }
+  .comp-label { width: 130px; font-size: 12px; font-weight: 600; flex-shrink: 0; }
+  .comp-track { flex: 1; height: 9px; background: var(--panel-2); border-radius: 8px; overflow: hidden; }
+  .comp-fill { height: 100%; border-radius: 8px; transition: width .4s ease; }
+  .comp-val { width: 64px; text-align: right; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--muted); }
 
   /* Radar */
-  .mid-grid{display:grid;grid-template-columns:360px 1fr;gap:18px;margin-bottom:18px}
-  .radar-wrap{display:flex;justify-content:center;padding:6px 0}
-  .radar-legend{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
-  .radar-legend .rl{display:flex;align-items:center;justify-content:space-between;font-size:11px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:6px 10px}
-  .radar-legend .rl b{color:var(--cyan);font-variant-numeric:tabular-nums}
+  .radar-wrap { display: flex; justify-content: center; }
 
-  /* X-detail breakdown table */
-  .xtable{width:100%;border-collapse:collapse;font-size:12px}
-  .xtable th{text-align:left;padding:9px 10px;font-size:9.5px;letter-spacing:.5px;text-transform:uppercase;color:var(--dim);border-bottom:1px solid var(--border);font-weight:700}
-  .xtable td{padding:9px 10px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle}
-  .xtable tr:hover td{background:rgba(255,255,255,.025)}
-  .xbar{height:5px;background:var(--border);border-radius:3px;overflow:hidden;width:130px}
-  .xbar-fill{height:100%;border-radius:3px;transition:width .4s}
-
-  /* Parameter cards */
-  .params-head{display:flex;align-items:center;justify-content:space-between;margin:26px 0 14px}
-  .params-head h2{font-size:15px;font-weight:700}
-  .params-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
-  .pcard{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
-  .pcard-head{padding:15px 18px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.015)}
-  .pcard-id{font-size:10px;font-weight:800;letter-spacing:1px;color:var(--accent)}
-  .pcard-title{font-size:14px;font-weight:700;margin-top:1px}
-  .pcard-q{font-size:11px;color:var(--muted);margin-top:2px}
-  .pcard-score{text-align:right;flex-shrink:0}
-  .pcard-score .v{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;transition:color .3s}
-  .pcard-score .w{font-size:9px;color:var(--dim);letter-spacing:.5px}
-  .pcard-body{padding:8px 18px 16px}
-
-  .field{padding:9px 0;border-bottom:1px solid rgba(255,255,255,.04)}
-  .field:last-child{border-bottom:none}
-  .field-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
-  .field-label{font-size:12px;color:var(--text);font-weight:500}
-  .field-hint{font-size:10px;color:var(--dim);margin-top:2px;line-height:1.4}
-  .field-val{font-size:12px;font-weight:700;color:var(--accent);min-width:46px;text-align:right;font-variant-numeric:tabular-nums;flex-shrink:0}
-  .num-inline{display:flex;align-items:center;gap:8px}
-  .num-inline .pre{font-size:12px;color:var(--muted)}
-  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:4px;background:var(--border);border-radius:3px;outline:none;cursor:pointer;margin-top:8px}
-  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);box-shadow:0 0 0 1px var(--accent);cursor:pointer;transition:background .15s}
-  input[type=range]:hover::-webkit-slider-thumb{background:var(--accent2)}
-  input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);cursor:pointer}
-  input[type=number]{width:100%;background:var(--card);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px;padding:6px 9px;outline:none;-moz-appearance:textfield;transition:border-color .15s}
-  input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
-  input[type=number]:focus{border-color:var(--accent)}
-  .dual{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
-  .dual .sub{font-size:9.5px;color:var(--dim);margin-bottom:3px;display:block}
-  .weekly{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
-  .weekly .wc label{font-size:9px;color:var(--dim);display:block;margin-bottom:3px}
-  .weekly .wc input{padding:4px 5px;font-size:11px}
-
-  .math-toggle{font-size:11px;color:var(--accent);cursor:pointer;user-select:none;margin-top:12px;display:inline-flex;align-items:center;gap:5px;font-weight:600}
-  .math-box{display:none;margin-top:10px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:12px;font-size:11px;color:var(--muted);line-height:1.7}
-  .math-box.open{display:block}
-  .math-box code{color:var(--cyan);font-family:'JetBrains Mono',Consolas,monospace;font-size:10.5px}
-  .math-box .ml{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px dashed rgba(255,255,255,.05)}
-  .math-box .ml:last-child{border-bottom:none}
-  .math-box .ml b{color:var(--text);font-variant-numeric:tabular-nums}
-
-  .footer-note{margin-top:30px;text-align:center;font-size:11px;color:var(--dim);line-height:1.7}
-  .footer-note code{color:var(--accent2);font-family:Consolas,monospace}
-
-  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--panel2);border:1px solid var(--accent);color:var(--text);padding:10px 20px;border-radius:10px;font-size:12px;font-weight:600;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:100}
-  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-
-  @media(max-width:1080px){
-    .top-grid,.mid-grid{grid-template-columns:1fr}
-    .params-grid{grid-template-columns:1fr}
+  /* Parameter accordions */
+  .param {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); margin-bottom: 14px; overflow: hidden;
   }
-  @media(max-width:560px){
-    .gates-grid{grid-template-columns:1fr}
-    .comp-row{grid-template-columns:80px 1fr 54px}
+  .param-head {
+    padding: 14px 18px; cursor: pointer; display: flex; align-items: center;
+    justify-content: space-between; gap: 14px; transition: .15s;
   }
+  .param-head:hover { background: var(--panel-2); }
+  .param-title { font-size: 14px; font-weight: 700; }
+  .param-title small { display: block; font-weight: 500; color: var(--muted); font-size: 11px; margin-top: 2px; }
+  .param-meta { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
+  .weight-tag { font-size: 10px; color: var(--muted); letter-spacing: .12em; }
+  .score-tag {
+    font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums;
+    padding: 3px 10px; border-radius: 8px; background: var(--panel-2); min-width: 58px; text-align: center;
+  }
+  .chev { transition: transform .2s; color: var(--muted); }
+  .param.open .chev { transform: rotate(90deg); }
+  .param-body { display: none; padding: 4px 18px 18px; border-top: 1px solid var(--border); }
+  .param.open .param-body { display: block; }
+
+  .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; margin-top: 14px; }
+  @media (max-width: 600px) { .field-grid { grid-template-columns: 1fr; } }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field.full { grid-column: 1 / -1; }
+  .field label { font-size: 12px; font-weight: 600; display: flex; justify-content: space-between; align-items: baseline; }
+  .field label .lv { color: var(--accent); font-variant-numeric: tabular-nums; font-weight: 700; }
+  .field .hint { font-size: 10.5px; color: var(--muted); line-height: 1.4; }
+  input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 5px; background: var(--panel-2); border-radius: 6px; outline: none; }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); cursor: pointer; border: 2px solid var(--bg); box-shadow: 0 0 0 1px var(--accent); }
+  input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--accent); cursor: pointer; border: 2px solid var(--bg); }
+  input[type="number"], select {
+    background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
+    padding: 7px 10px; border-radius: 8px; font-size: 13px; font-family: inherit; width: 100%;
+  }
+  input[type="number"]:focus, select:focus { outline: none; border-color: var(--accent); }
+  .toggle-row { display: flex; align-items: center; gap: 9px; }
+  .switch { position: relative; width: 38px; height: 21px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider-tg { position: absolute; inset: 0; background: var(--panel-2); border: 1px solid var(--border); border-radius: 20px; cursor: pointer; transition: .2s; }
+  .slider-tg::before { content: ""; position: absolute; height: 15px; width: 15px; left: 2px; top: 2px; background: var(--muted); border-radius: 50%; transition: .2s; }
+  .switch input:checked + .slider-tg { background: rgba(79,156,255,.25); border-color: var(--accent); }
+  .switch input:checked + .slider-tg::before { transform: translateX(17px); background: var(--accent); }
+
+  .math-toggle { font-size: 11px; color: var(--accent); cursor: pointer; margin-top: 14px; user-select: none; font-weight: 600; }
+  .math-box { display: none; margin-top: 10px; background: #0a0d13; border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 11.5px; color: #b8c4d6; }
+  .math-box.show { display: block; }
+  .math-box .ml { display: flex; justify-content: space-between; padding: 2px 0; border-bottom: 1px dashed rgba(255,255,255,.05); }
+  .math-box .ml span:last-child { color: var(--accent-2); font-weight: 600; }
+
+  .modifier-card .mod-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .modifier-card .mod-row label { width: 150px; font-size: 12px; font-weight: 600; flex-shrink: 0; }
+  .modifier-card .mod-row .mv { width: 50px; text-align: right; color: var(--accent); font-weight: 700; font-size: 12px; }
+
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11px; color: var(--muted); margin-top: 10px; justify-content: center; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+  footer.app { padding: 24px 32px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--border); text-align: center; }
+  .formula-strip { background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; font-family: ui-monospace, monospace; font-size: 12px; color: #b8c4d6; margin-bottom: 14px; }
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--panel-2); border: 1px solid var(--accent); padding: 10px 18px; border-radius: 10px; font-size: 13px; opacity: 0; pointer-events: none; transition: .25s; z-index: 100; }
+  .toast.show { opacity: 1; bottom: 34px; }
 </style>
 </head>
 <body>
-<div class="wrap">
 
-  <!-- HEADER -->
-  <div class="topbar">
-    <div class="brand">
-      <span class="kicker">Deal Qualification Instrument</span>
-      <h1>Lead Score Model</h1>
-      <p>Bayesian credible intervals, exponential decay, Huber robust composites and a Choquet integral with pairwise interactions. Adjust any input; the score recalculates instantly.</p>
+<header class="app">
+  <div class="eyebrow">Deal Qualification Instrument</div>
+  <h1>Lead Score Model</h1>
+  <p>Adjust any input and the score recalculates instantly — a faithful port of the 10-parameter scoring notebook, including Bayesian credible intervals, exponential decay penalties, the Huber Robust Composite, and Choquet-integral aggregation with pairwise interactions.</p>
+  <div class="toolbar">
+    <button class="btn primary" onclick="randomize()">🎲 Randomize</button>
+    <button class="btn" onclick="resetSample()">↺ Reset to sample</button>
+    <button class="btn" onclick="copySummary()">📋 Copy summary</button>
+    <button class="btn" onclick="exportScenario()">⬇ Export scenario</button>
+    <button class="btn" onclick="document.getElementById('importer').click()">⬆ Import scenario</button>
+    <input type="file" id="importer" accept="application/json" style="display:none" onchange="importScenario(event)">
+  </div>
+</header>
+
+<div class="layout">
+  <!-- LEFT: inputs -->
+  <div class="col-left">
+    <div class="formula-strip">
+      S = 100 · G · M · ( C<sub>μ</sub> / μ(N) ) &nbsp;—&nbsp; Choquet integral over a 2-additive fuzzy measure, gate-aware, friction-scaled.
     </div>
-    <div class="actions">
-      <button class="btn primary" id="btn-rand">⚄ Randomize</button>
-      <button class="btn" id="btn-reset">↺ Reset to sample</button>
-      <button class="btn" id="btn-copy">⧉ Copy summary</button>
-      <button class="btn danger" id="btn-export">⭳ Export scenario</button>
-      <label class="btn" style="cursor:pointer">⭱ Import<input type="file" id="file-import" accept="application/json" hidden></label>
+
+    <!-- GATES -->
+    <div class="card" style="margin-bottom:14px;">
+      <div class="card-head"><h2>Hard Knockout Gates</h2><span class="sub">Any fail → score = 0</span></div>
+      <div class="card-body">
+        <div class="gate-grid" id="gateGrid"></div>
+      </div>
     </div>
+
+    <!-- MODIFIERS -->
+    <div class="card modifier-card" style="margin-bottom:14px;">
+      <div class="card-head"><h2>Deal-Level Modifiers</h2><span class="sub">Multiplicative friction · M = ∏Mᵢ</span></div>
+      <div class="card-body" id="modBody"></div>
+    </div>
+
+    <!-- PARAMETERS -->
+    <div id="paramContainer"></div>
   </div>
 
-  <!-- TOP GRID -->
-  <div class="top-grid">
-    <!-- Gauge -->
-    <div class="panel panel-pad gauge-card">
-      <div class="gauge-wrap">
-        <svg viewBox="0 0 280 170">
-          <defs>
-            <linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0" stop-color="#ef4444"/><stop offset=".4" stop-color="#f59e0b"/>
-              <stop offset=".7" stop-color="#22d3ee"/><stop offset="1" stop-color="#10b981"/>
-            </linearGradient>
-          </defs>
-          <path d="M 30 150 A 110 110 0 0 1 250 150" fill="none" stroke="#2a3344" stroke-width="18" stroke-linecap="round"/>
-          <path id="gauge-arc" d="M 30 150 A 110 110 0 0 1 250 150" fill="none" stroke="url(#gaugeGrad)" stroke-width="18" stroke-linecap="round" stroke-dasharray="0 1000"/>
-          <line id="gauge-needle" x1="140" y1="150" x2="140" y2="55" stroke="#e6edf6" stroke-width="3" stroke-linecap="round"/>
-          <circle cx="140" cy="150" r="7" fill="#e6edf6"/>
-        </svg>
-        <div class="gauge-center">
-          <div class="gauge-score" id="g-score">—</div>
-          <div class="gauge-of">of 100</div>
-          <div class="gauge-badge" id="g-badge">—</div>
-        </div>
-      </div>
-      <div class="gauge-scale"><span>0</span><span>33</span><span>66</span><span>100</span></div>
-    </div>
-
-    <!-- Gates + composition -->
-    <div style="display:flex;flex-direction:column;gap:18px">
-      <div class="panel panel-pad">
-        <div class="panel-title">Gates &amp; Deal Friction — Global Multipliers</div>
-        <div class="gates-grid">
-          <div class="gate" id="gate-G1">
-            <div class="gate-head"><span class="gate-name">G1 · Capital</span><span class="pill pass" id="pill-G1">PASS</span></div>
-            <div class="gate-desc">Financial ability and a funding path both exist.</div>
-            <label class="switch"><input type="checkbox" class="gate-input" data-gate="G1" checked><span class="track"></span>Pass</label>
-          </div>
-          <div class="gate" id="gate-G2">
-            <div class="gate-head"><span class="gate-name">G2 · Legal</span><span class="pill pass" id="pill-G2">PASS</span></div>
-            <div class="gate-desc">No legal, sanctions or compliance block to selling here.</div>
-            <label class="switch"><input type="checkbox" class="gate-input" data-gate="G2" checked><span class="track"></span>Pass</label>
-          </div>
-          <div class="gate" id="gate-G3">
-            <div class="gate-head"><span class="gate-name">G3 · Technical</span><span class="pill pass" id="pill-G3">PASS</span></div>
-            <div class="gate-desc">Product can technically serve the core need.</div>
-            <label class="switch"><input type="checkbox" class="gate-input" data-gate="G3" checked><span class="track"></span>Pass</label>
-          </div>
-          <div class="gate" style="display:flex;flex-direction:column;justify-content:center">
-            <div class="gate-head"><span class="gate-name">M · Deal friction</span><span class="mod-val" id="mod-val">0.90</span></div>
-            <div class="gate-desc" id="mod-desc">Some friction — complex procurement, manageable.</div>
-            <input type="range" id="mod" min="0.4" max="1" step="0.05" value="0.9">
-          </div>
-        </div>
-      </div>
-
-      <div class="panel panel-pad">
-        <div class="panel-title">Score Composition — Who's Pulling the Needle</div>
-        <div class="comp-list" id="comp-list"></div>
+  <!-- RIGHT: results -->
+  <div class="col-right">
+    <div class="card">
+      <div class="card-head"><h2>Score</h2><span class="sub" id="bandSub">—</span></div>
+      <div class="card-body gauge-wrap">
+        <canvas id="gauge" width="320" height="190"></canvas>
+        <div class="gauge-score" id="gaugeScore">0.00</div>
+        <div class="gauge-band" id="gaugeBand">COLD</div>
+        <div class="gauge-meta">Gates: <b id="gateState">PASS</b> · Modifier M = <b id="modState">1.00</b></div>
       </div>
     </div>
-  </div>
 
-  <!-- MID GRID: radar + table -->
-  <div class="mid-grid">
-    <div class="panel panel-pad">
-      <div class="panel-title">Shape of the Deal</div>
-      <div class="radar-wrap">
-        <svg id="radar" viewBox="0 0 320 280" width="320" height="280"></svg>
+    <div class="card">
+      <div class="card-head"><h2>Score Composition</h2><span class="sub">Choquet contribution</span></div>
+      <div class="card-body" id="compBody"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Shape of the Deal</h2><span class="sub">Parameter radar</span></div>
+      <div class="card-body radar-wrap">
+        <canvas id="radar" width="340" height="300"></canvas>
       </div>
-      <div class="radar-legend" id="radar-legend"></div>
     </div>
-
-    <div class="panel panel-pad">
-      <div class="panel-title">Parameter Breakdown &amp; Choquet Contributions</div>
-      <table class="xtable">
-        <thead><tr><th>Parameter</th><th>Score</th><th>Capacity aᵢ</th><th>Contribution</th><th>Visual</th></tr></thead>
-        <tbody id="xtable-body"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- PARAMETER CARDS -->
-  <div class="params-head"><h2>Inputs by Parameter</h2></div>
-  <div class="params-grid" id="params-grid"></div>
-
-  <div class="footer-note">
-    Final score: <code>S = 100 · G · M · (C_μ / μ(N))</code> — Choquet integral over a 2-additive capacity with synergies (X1+X4, X1+X3, X2+X5, X3+X4, X8+X1, X9+X10) and redundancies (X5+X9, X6+X7, X2+X6).<br>
-    Runs entirely in this page — nothing leaves your browser.
   </div>
 </div>
+
+<footer class="app">
+  Built from your scoring notebook · runs entirely in this page, nothing leaves your browser.
+</footer>
 
 <div class="toast" id="toast"></div>
 
 <script>
-(function(){
-'use strict';
-const $=id=>document.getElementById(id);
-const clamp=(v,lo=0,hi=1)=>v<lo?lo:v>hi?hi:v;
+/* ============================================================
+   HELPER FUNCTIONS — ported from the notebook
+   ============================================================ */
 
-/* ───────────────── HELPER FUNCTIONS (ported from notebook) ───────────────── */
-const sigmoid=(x,x0=0.5,k=8)=>1/(1+Math.exp(-k*(x-x0)));
-const edp=(x,k)=>Math.exp(-k*x);
-const lnNorm=(c,cap)=>cap<=0?0:Math.min(Math.log(1+c)/Math.log(1+cap),1);
-
-// Incomplete beta / Beta-quantile for Bayesian credible interval (matches scipy beta.ppf)
-function betacf(a,b,x){
-  const MAXIT=200,EPS=3e-12,FPMIN=1e-300;
-  let qab=a+b,qap=a+1,qam=a-1,c=1,d=1-qab*x/qap;
-  if(Math.abs(d)<FPMIN)d=FPMIN; d=1/d; let h=d;
+// log-gamma (Lanczos) for Beta inverse CDF
+function logGamma(z){
+  const g=7, c=[0.99999999999980993,676.5203681218851,-1259.1392167224028,
+    771.32342877765313,-176.61502916214059,12.507343278686905,
+    -0.13857109526572012,9.9843695780195716e-6,1.5056327351493116e-7];
+  if(z<0.5) return Math.log(Math.PI/Math.sin(Math.PI*z))-logGamma(1-z);
+  z-=1; let x=c[0];
+  for(let i=1;i<g+2;i++) x+=c[i]/(z+i);
+  const t=z+g+0.5;
+  return 0.5*Math.log(2*Math.PI)+(z+0.5)*Math.log(t)-t+Math.log(x);
+}
+function betacf(x,a,b){
+  const MAXIT=200, EPS=3e-12, FPMIN=1e-300;
+  let qab=a+b, qap=a+1, qam=a-1;
+  let cc=1, d=1-qab*x/qap;
+  if(Math.abs(d)<FPMIN) d=FPMIN; d=1/d; let h=d;
   for(let m=1;m<=MAXIT;m++){
-    const m2=2*m;
+    let m2=2*m;
     let aa=m*(b-m)*x/((qam+m2)*(a+m2));
     d=1+aa*d; if(Math.abs(d)<FPMIN)d=FPMIN;
-    c=1+aa/c; if(Math.abs(c)<FPMIN)c=FPMIN; d=1/d; h*=d*c;
+    cc=1+aa/cc; if(Math.abs(cc)<FPMIN)cc=FPMIN;
+    d=1/d; h*=d*cc;
     aa=-(a+m)*(qab+m)*x/((a+m2)*(qap+m2));
     d=1+aa*d; if(Math.abs(d)<FPMIN)d=FPMIN;
-    c=1+aa/c; if(Math.abs(c)<FPMIN)c=FPMIN; d=1/d;
-    const del=d*c; h*=del; if(Math.abs(del-1)<EPS)break;
+    cc=1+aa/cc; if(Math.abs(cc)<FPMIN)cc=FPMIN;
+    d=1/d; let del=d*cc; h*=del;
+    if(Math.abs(del-1)<EPS) break;
   }
   return h;
 }
-function gammaln(x){
-  const g=[76.18009172947146,-86.50532032941677,24.01409824083091,
-    -1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];
-  let xx=x,y=x,tmp=x+5.5; tmp-=(xx+0.5)*Math.log(tmp); let ser=1.000000000190015;
-  for(let j=0;j<6;j++){y++;ser+=g[j]/y;}
-  return -tmp+Math.log(2.5066282746310005*ser/xx);
-}
-function betinc(x,a,b){ // regularized incomplete beta I_x(a,b)
-  if(x<=0)return 0; if(x>=1)return 1;
-  const lbeta=gammaln(a+b)-gammaln(a)-gammaln(b);
-  const bt=Math.exp(lbeta+a*Math.log(x)+b*Math.log(1-x));
-  if(x<(a+1)/(a+b+2))return bt*betacf(a,b,x)/a;
-  return 1-bt*betacf(b,a,1-x)/b;
+function betaCDF(x,a,b){ // regularized incomplete beta I_x(a,b)
+  if(x<=0) return 0; if(x>=1) return 1;
+  const bt=Math.exp(logGamma(a+b)-logGamma(a)-logGamma(b)+a*Math.log(x)+b*Math.log(1-x));
+  if(x<(a+1)/(a+b+2)) return bt*betacf(x,a,b)/a;
+  return 1-bt*betacf(1-x,b,a)/b;
 }
 function betaPPF(p,a,b){ // inverse CDF via bisection
-  if(p<=0)return 0; if(p>=1)return 1;
-  let lo=0,hi=1;
-  for(let i=0;i<100;i++){const mid=(lo+hi)/2; (betinc(mid,a,b)<p)?lo=mid:hi=mid;}
+  if(p<=0) return 0; if(p>=1) return 1;
+  let lo=0, hi=1;
+  for(let i=0;i<100;i++){
+    const mid=(lo+hi)/2;
+    if(betaCDF(mid,a,b)<p) lo=mid; else hi=mid;
+  }
   return (lo+hi)/2;
 }
-// Bayesian credible interval: beta.ppf(0.05, s+1, n-s+1)
-function bci(successes,trials,conf=0.05){
-  if(trials<=0)return 0;
-  return betaPPF(conf,successes+1,trials-successes+1);
+function bci(successes, trials, confidence=0.05){
+  if(trials<=0) return 0.0;
+  const s=successes, n=trials;
+  return betaPPF(confidence, s+1, n-s+1);
 }
-
-// Huber Robust Composite
-function hrc(values,weights,delta=0.15,maxIter=100,tol=1e-6){
-  let w=weights.slice(); const ws=w.reduce((a,b)=>a+b,0); w=w.map(x=>x/ws);
-  let theta=values.reduce((s,v,i)=>s+w[i]*v,0);
-  for(let it=0;it<maxIter;it++){
-    const aw=w.map((wi,i)=>{const r=Math.abs(values[i]-theta);return r>delta?wi*(delta/r):wi;});
-    const aws=aw.reduce((a,b)=>a+b,0); if(aws===0)break;
-    const tn=values.reduce((s,v,i)=>s+aw[i]*v,0)/aws;
-    if(Math.abs(tn-theta)<tol){theta=tn;break;} theta=tn;
+function edp(x,k){ return Math.exp(-k*x); }
+function ln_norm(count, cap){
+  if(cap<=0) return 0.0;
+  return Math.min(Math.log(1+count)/Math.log(1+cap), 1.0);
+}
+function sigmoid_transform(x, x0=0.50, k=8.0){
+  return 1.0/(1.0+Math.exp(-k*(x-x0)));
+}
+function hrc(values, weights, delta=0.15, maxIter=100, tol=1e-6){
+  let w = weights.slice();
+  const wsum = w.reduce((a,b)=>a+b,0);
+  w = w.map(x=>x/wsum);
+  let theta = values.reduce((a,v,i)=>a+w[i]*v,0);
+  for(let it=0; it<maxIter; it++){
+    const adj = w.slice();
+    for(let i=0;i<values.length;i++){
+      const r=Math.abs(values[i]-theta);
+      if(r>delta) adj[i]=w[i]*(delta/r);
+    }
+    const asum=adj.reduce((a,b)=>a+b,0);
+    if(asum===0) break;
+    const thetaNew = values.reduce((a,v,i)=>a+adj[i]*v,0)/asum;
+    if(Math.abs(thetaNew-theta)<tol){ theta=thetaNew; break; }
+    theta=thetaNew;
   }
   return theta;
 }
-function ewmaMean(values,lam=0.85){
-  const T=values.length; const w=values.map((_,t)=>Math.pow(lam,T-t-1));
-  const ws=w.reduce((a,b)=>a+b,0); return values.reduce((s,v,t)=>s+w[t]*v,0)/ws;
+function mean(arr){ return arr.reduce((a,b)=>a+b,0)/arr.length; }
+function ewma_mean(values, lam=0.85){
+  const T=values.length;
+  const w=values.map((_,t)=>Math.pow(lam, T-t-1));
+  const ws=w.reduce((a,b)=>a+b,0);
+  return values.reduce((a,v,i)=>a+w[i]/ws*v,0);
 }
-const mean=arr=>arr.reduce((a,b)=>a+b,0)/arr.length;
 
-/* ───────────────── DEFAULT SAMPLE DATA (from notebook) ───────────────── */
-const DEFAULTS={
-  // X1
-  p1_b:50000,p1_d:45000,p1_c:0.75,p1_t:3,p1_f2:0.7,p1_m:0.5,p1_p:0.75,p1_sim:12,p1_conf:8,
-  // X2
-  p2_r:0.8,p2_s:0.9,p2_p:0.7,p2_cs:1,p2_dc:0.6,p2_cr:0.2,p2_c2:0.8,p2_u:3,p2_fa:17,p2_fn:20,
-  // X3
-  p3_r:0.8,p3_d:1,p3_n:4,p3_o:0.8,p3_p:0.7,p3_nm:4,p3_ns:3,
-  // X4
-  p4_t:45,p4_t1:1,p4_t2:30,p4_ep:0.8,p4_nstep:1,p4_cp:0.3,
-  // X5
-  p5_n1:10,p5_n2:5,p5_n3:3,p5_n4:4,p5_n5:8,p5_n6:2,p5_n7:3,p5_n8:1,p5_n9:2,
-  p5_t:7,p5_v:1.5,p5_c:4,p5_m:1,
-  // X6
-  p6_seg:0.9,p6_emp:0.8,p6_rev:0.7,p6_tech:0.85,p6_geo:1.0,p6_gro:0.7,p6_fh:0.8,p6_dig:0.75,p6_lang:0.9,
-  // X7
-  p7_q:0.75,p7_p:0.8,p7_r:0.7,p7_s:1.0,p7_leads:40,p7_conv:22,
-  // X8
-  p8_n:3,p8_s:0.3,p8_d:0.8,p8_c:0.4,p8_k:0,p8_deals:30,p8_wins:18,
-  // X9
-  p9_pb:1.0,p9_rt:18,p9_nps:0.5,p9_es:0.5,p9_t:0.7,p9_rc:0.8,p9_n:0,
-  // X10
-  p10_ltv:1500000,p10_cac:400000,p10_cs:0.7,p10_b:0.6,p10_m:0.5,p10_e:0.65,p10_c:0.3,p10_sa:15,p10_ne:9,
-  // weekly + gates + mod
-  we:[0.3,0.4,0.5,0.55,0.7,0.8,0.85,0.9],
-  G1:1,G2:1,G3:1,mod:0.9
+/* ============================================================
+   SAMPLE DATA — exact values from the notebook
+   ============================================================ */
+const SAMPLE = {
+  p1:{b:50000,d:45000,c:0.75,t:3,f2:0.7,m:0.5,p:0.75,n_similar_deals:12,n_confirmed_budget:8},
+  p2:{r:0.8,s:0.9,p:0.7,cs:1,d:0.6,t:0.85,c:0.2,c2:0.8,u:3,n_features_needed:20,n_features_available:17},
+  p3:{r:0.8,d:1,n:4,o:0.8,p:0.7,n_stakeholders_met:4,n_stakeholders_supportive:3},
+  p4:{t:45,t1:1,t2:30,ep:0.8,ns:1,cp:0.3},
+  p5:{n1:10,n2:5,n3:3,n4:4,n5:8,n6:2,n7:3,n8:1,n9:2,t:7,v:1.5,c:4,m:1,weekly_engagement:[0.3,0.4,0.5,0.55,0.7,0.8,0.85,0.9]},
+  p6:{seg:0.9,emp:0.8,rev:0.7,tech:0.85,geo:1.0,gro:0.7,f:0.8,d:0.75,l:0.9},
+  p7:{q:0.75,p:0.8,r:0.7,s:1.0,n_leads_from_source:40,n_converted_from_source:22},
+  p8:{n:3,w:0.6,s:0.3,d:0.8,c:0.4,k:0,n_competitive_deals:30,n_wins:18},
+  p9:{pb:1.0,rt:18,nps:0.5,es:0.5,t:0.7,rc:0.8,n:0},
+  p10:{ltv:1500000,cac:400000,cs:0.7,b:0.6,m:0.5,e:0.65,c:0.3,n_similar_accounts:15,n_expanded:9},
+  gates:["f","f","f","f","f","f","f"],
+  modifiers:[1,1,0.9,1,1]
 };
-let state=JSON.parse(JSON.stringify(DEFAULTS));
+let D = JSON.parse(JSON.stringify(SAMPLE));
 
-/* ───────────────── PARAMETER SCHEMA (drives UI generation) ───────────────── */
-// type: 'range' | 'num' | 'bool' ; for bool, range 0..1 step 1
-const SCHEMA=[
- {id:'X1',title:'Money',sub:'Can they pay?',fields:[
-   {k:'p1_b',label:'Budget',hint:'Total budget the buyer can realistically spend',type:'num',pre:'₹',step:5000},
-   {k:'p1_d',label:'Deal value',hint:'Quoted price of this specific deal',type:'num',pre:'₹',step:5000},
-   {k:'p1_c',label:'Budget confirmation',hint:'0=none · 0.5=verbal · 0.75=written · 1=formal',type:'range',min:0,max:1,step:0.05},
-   {k:'p1_f2',label:'Funding security',hint:'0.3=unidentified · 0.7=project budget · 1=CapEx',type:'range',min:0,max:1,step:0.05},
-   {k:'p1_m',label:'Multi-year willingness',hint:'Openness to long-term commitment',type:'range',min:0,max:1,step:0.05},
-   {k:'p1_p',label:'Procurement simplicity',hint:'1=credit-card simple · 0.5=full RFP',type:'range',min:0.5,max:1,step:0.05},
-   {k:'p1_t',label:'Fiscal alignment (months)',hint:'Months until fiscal cycle aligns',type:'range',min:0,max:12,step:1},
-   {k:'p1_conf',label:'Confirmed-budget deals',hint:'Historical successes (evidence)',type:'range',min:0,max:50,step:1},
-   {k:'p1_sim',label:'Similar deals sampled',hint:'Historical sample size',type:'range',min:1,max:50,step:1},
- ]},
- {id:'X2',title:'Fit',sub:'Does it solve their problem?',fields:[
-   {k:'p2_r',label:'Industry match',hint:'Alignment with proven industries',type:'range',min:0,max:1,step:0.05},
-   {k:'p2_s',label:'Solution fit',hint:'How directly we solve their problem',type:'range',min:0,max:1,step:0.05},
-   {k:'p2_p',label:'Problem clarity',hint:'How well they articulate the problem',type:'range',min:0,max:1,step:0.05},
-   {k:'p2_dc',label:'Dissatisfaction',hint:'Pain with current solution',type:'range',min:0,max:1,step:0.05},
-   {k:'p2_cs',label:'Current solution exists',hint:'0=none · 0.5=partial · 1=replacement',type:'range',min:0,max:1,step:0.5},
-   {k:'p2_cr',label:'Custom work needed',hint:'0=none · 1=heavy custom',type:'range',min:0,max:1,step:0.05},
-   {k:'p2_c2',label:'Compliance fit',hint:'0=none · 0.5=partial · 1=full',type:'range',min:0,max:1,step:0.5},
-   {k:'p2_u',label:'Use cases articulated',hint:'Distinct use cases (count)',type:'range',min:0,max:10,step:1},
-   {k:'p2_fa',label:'Features available',hint:'Of the features they need',type:'num',step:1},
-   {k:'p2_fn',label:'Features needed',hint:'Total important features',type:'num',step:1},
- ]},
- {id:'X3',title:'Power',sub:'Talking to the decision-maker?',fields:[
-   {k:'p3_r',label:'Contact seniority',hint:'0=junior · 0.8=VP · 1=C-suite',type:'range',min:0,max:1,step:0.05},
-   {k:'p3_d',label:'Decision involvement',hint:'0=none · 0.5=influencer · 1=decision-maker',type:'range',min:0,max:1,step:0.5},
-   {k:'p3_n',label:'Stakeholders identified',hint:'Diminishing returns past ~5',type:'range',min:1,max:15,step:1},
-   {k:'p3_nm',label:'Stakeholders met',hint:'How many we have spoken to',type:'range',min:0,max:15,step:1},
-   {k:'p3_ns',label:'Stakeholders supportive',hint:'Actively backing us',type:'range',min:0,max:15,step:1},
-   {k:'p3_o',label:'Org alignment',hint:'Internal agreement on the priority',type:'range',min:0,max:1,step:0.05},
-   {k:'p3_p',label:'Access to senior buyer',hint:'Quality of access to budget holder',type:'range',min:0,max:1,step:0.05},
- ]},
- {id:'X4',title:'Momentum',sub:'Is the deal moving?',fields:[
-   {k:'p4_t',label:'Days until decision',hint:'Expected days to decide',type:'range',min:0,max:365,step:5},
-   {k:'p4_t1',label:'Trigger event active',hint:'External catalyst occurred?',type:'range',min:0,max:1,step:1},
-   {k:'p4_t2',label:'Days until trigger deadline',hint:'Urgency of the trigger',type:'range',min:0,max:180,step:5},
-   {k:'p4_ep',label:'Evaluation maturity',hint:'How structured their process is',type:'range',min:0,max:1,step:0.05},
-   {k:'p4_nstep',label:'Next step defined',hint:'Concrete next action agreed?',type:'range',min:0,max:1,step:1},
-   {k:'p4_cp',label:'Competing priorities',hint:'0=top priority · 1=heavily distracted',type:'range',min:0,max:1,step:0.05},
- ]},
- {id:'X5',title:'Engagement',sub:'How active are they?',fields:[
-   {k:'p5_n1',label:'Email opens',type:'range',min:0,max:100,step:1},
-   {k:'p5_n2',label:'Email replies',type:'range',min:0,max:50,step:1},
-   {k:'p5_n3',label:'Meetings held',type:'range',min:0,max:30,step:1},
-   {k:'p5_n4',label:'Calls',type:'range',min:0,max:30,step:1},
-   {k:'p5_n5',label:'Web sessions',type:'range',min:0,max:100,step:1},
-   {k:'p5_n6',label:'Downloads',type:'range',min:0,max:30,step:1},
-   {k:'p5_n7',label:'Pricing visits',type:'range',min:0,max:30,step:1},
-   {k:'p5_n8',label:'Demo requests',type:'range',min:0,max:10,step:1},
-   {k:'p5_n9',label:'Social engagement',type:'range',min:0,max:30,step:1},
-   {k:'p5_t',label:'Days since last contact',hint:'Higher = decay penalty',type:'range',min:0,max:180,step:1},
-   {k:'p5_v',label:'Velocity ratio',hint:'>1 = accelerating',type:'range',min:0,max:5,step:0.1},
-   {k:'p5_c',label:'Channel diversity',hint:'Distinct channels used',type:'range',min:0,max:9,step:1},
-   {k:'p5_m',label:'Negative signals',hint:'No-shows, unsubscribes',type:'range',min:0,max:10,step:1},
-   {k:'we',label:'Weekly engagement (8 wks)',hint:'0–1 scores, oldest→newest, for EWMA momentum',type:'weekly'},
- ]},
- {id:'X6',title:'Company Fit',sub:'Right kind of account?',fields:[
-   {k:'p6_seg',label:'Segment match (ICP)',type:'range',min:0,max:1,step:0.05},
-   {k:'p6_emp',label:'Employee size fit',type:'range',min:0,max:1,step:0.05},
-   {k:'p6_rev',label:'Revenue fit',type:'range',min:0,max:1,step:0.05},
-   {k:'p6_tech',label:'Tech stack compatibility',type:'range',min:0,max:1,step:0.05},
-   {k:'p6_geo',label:'Geographic alignment',type:'range',min:0,max:1,step:0.05},
-   {k:'p6_gro',label:'Growth trajectory',type:'range',min:0,max:1,step:0.05},
-   {k:'p6_fh',label:'Financial health',type:'range',min:0,max:1,step:0.05},
-   {k:'p6_dig',label:'Digital readiness',type:'range',min:0,max:1,step:0.05},
-   {k:'p6_lang',label:'Language/culture fit',type:'range',min:0,max:1,step:0.05},
- ]},
- {id:'X7',title:'Source',sub:'Where did the lead come from?',fields:[
-   {k:'p7_q',label:'Source channel quality',hint:'Referral=high · cold list=low',type:'range',min:0,max:1,step:0.05},
-   {k:'p7_p',label:'Campaign/asset quality',type:'range',min:0,max:1,step:0.05},
-   {k:'p7_r',label:'Data richness at entry',type:'range',min:0,max:1,step:0.05},
-   {k:'p7_s',label:'Inbound vs outbound',hint:'1=inbound · 0=cold outbound',type:'range',min:0,max:1,step:0.05},
-   {k:'p7_conv',label:'Converted from source',hint:'Historical successes',type:'range',min:0,max:100,step:1},
-   {k:'p7_leads',label:'Leads from source',hint:'Historical sample',type:'range',min:1,max:200,step:1},
- ]},
- {id:'X8',title:'Edge',sub:'Why us over rivals?',fields:[
-   {k:'p8_k',label:'Sole vendor',hint:'1 = only vendor → score 1.0',type:'range',min:0,max:1,step:1},
-   {k:'p8_n',label:'Competitors evaluated',type:'range',min:0,max:10,step:1},
-   {k:'p8_d',label:'Differentiation',type:'range',min:0,max:1,step:0.05},
-   {k:'p8_s',label:'Incumbent strength',hint:'How entrenched the current vendor is',type:'range',min:0,max:1,step:0.05},
-   {k:'p8_c',label:'Switching cost',hint:'0=trivial · 1=massive',type:'range',min:0,max:1,step:0.05},
-   {k:'p8_wins',label:'Wins in sample',type:'range',min:0,max:200,step:1},
-   {k:'p8_deals',label:'Competitive deals sampled',type:'range',min:1,max:200,step:1},
- ]},
- {id:'X9',title:'Trust',sub:'Existing relationship equity?',fields:[
-   {k:'p9_pb',label:'Previous relationship',hint:'0=new · 0.5=lapsed · 1=active',type:'range',min:0,max:1,step:0.5},
-   {k:'p9_rt',label:'Relationship tenure (months)',type:'range',min:0,max:120,step:1},
-   {k:'p9_nps',label:'NPS proxy',hint:'-1=detractor · 0=passive · 1=promoter',type:'range',min:-1,max:1,step:0.1},
-   {k:'p9_es',label:'Executive sponsor',hint:'0=none · 1=strong relationship',type:'range',min:0,max:1,step:0.05},
-   {k:'p9_t',label:'Trust indicators',type:'range',min:0,max:1,step:0.05},
-   {k:'p9_rc',label:'Reference customer',type:'range',min:0,max:1,step:0.05},
-   {k:'p9_n',label:'Negative experience',hint:'0=none · 0.5=minor · 1=serious',type:'range',min:0,max:1,step:0.5},
- ]},
- {id:'X10',title:'Strategic Value',sub:'Long-term account upside?',fields:[
-   {k:'p10_ltv',label:'Estimated LTV',type:'num',pre:'₹',step:50000},
-   {k:'p10_cac',label:'Acquisition cost (CAC)',type:'num',pre:'₹',step:5000},
-   {k:'p10_cs',label:'Cross-sell potential',type:'range',min:0,max:1,step:0.05},
-   {k:'p10_b',label:'Brand value of client',type:'range',min:0,max:1,step:0.05},
-   {k:'p10_m',label:'Market expansion',hint:'0=no · 0.5=strengthens · 1=new market',type:'range',min:0,max:1,step:0.5},
-   {k:'p10_e',label:'Expansion revenue prob.',type:'range',min:0,max:1,step:0.05},
-   {k:'p10_c',label:'Churn risk',hint:'0=sticky · 1=high churn',type:'range',min:0,max:1,step:0.05},
-   {k:'p10_ne',label:'Expanded accounts',hint:'Historical successes',type:'range',min:0,max:100,step:1},
-   {k:'p10_sa',label:'Similar accounts sampled',type:'range',min:1,max:100,step:1},
- ]},
-];
+/* ============================================================
+   PARAMETER COMPUTATIONS — ported one-to-one
+   ============================================================ */
+function computeP1(p){
+  const br_raw=Math.min(p.b/p.d,1.0);
+  const Br=sigmoid_transform(br_raw,0.70,10.0);
+  const C=0.5*p.c+0.5*bci(p.n_confirmed_budget,p.n_similar_deals);
+  const F1=edp(p.t,0.25);
+  const X1=hrc([Br,C,F1,p.f2,p.m,p.p],[0.45,0.17,0.12,0.12,0.08,0.06]);
+  return {X:X1, math:{Br_sigmoid:Br,C_blended:C,F1_decay:F1,F2:p.f2,M:p.m,P:p.p}};
+}
+function computeP2(p){
+  const T_tech=bci(p.n_features_available,p.n_features_needed);
+  const F_pos=hrc([p.r,p.s,p.p,T_tech],[0.25,0.30,0.20,0.25]);
+  const F_neg=hrc([1-0.4*p.d*p.cs,1-0.25*p.c,edp(1-p.c2,3.0)],[0.40,0.25,0.35]);
+  const U=ln_norm(p.u,6);
+  const X2=hrc([F_pos,F_neg,U],[0.45,0.40,0.15]);
+  return {X:X2, math:{F_pos,F_neg,U_score:U,T_bci:T_tech}};
+}
+function computeP3(p){
+  const Ac=p.r*p.d;
+  const N=ln_norm(p.n,5);
+  const O=0.5*p.o+0.5*bci(p.n_stakeholders_supportive,p.n_stakeholders_met);
+  const X3=hrc([Ac,N,O,p.p],[0.30,0.30,0.25,0.15]);
+  return {X:X3, math:{Ac,N_score:N,O_combined:O,P_access:p.p}};
+}
+function computeP4(p){
+  const Tp=edp(p.t,0.015);
+  const Ut=p.t1===1?edp(p.t2,0.01):0;
+  const Pp=0.5*p.ep+0.5*p.ns;
+  const X4=hrc([Tp,Ut,Pp,1-p.cp],[0.45,0.15,0.25,0.15]);
+  return {X:X4, math:{"T'":Tp,U_trig:Ut,P_process:Pp,"1-Cp":1-p.cp}};
+}
+function computeP5(p){
+  const e=[ln_norm(p.n1,20),ln_norm(p.n2,10),ln_norm(p.n3,6),ln_norm(p.n4,8),
+    ln_norm(p.n5,15),ln_norm(p.n6,8),ln_norm(p.n7,5),ln_norm(p.n8,3),ln_norm(p.n9,5)];
+  const Ec=hrc(e,[0.05,0.10,0.18,0.12,0.08,0.10,0.14,0.18,0.05]);
+  const Rd=edp(p.t,0.033);
+  const ew=ewma_mean(p.weekly_engagement,0.85);
+  const sm=mean(p.weekly_engagement);
+  const Vb=Math.min(Math.max(0,(ew-sm)/Math.max(sm,0.01)),1.0)*0.15;
+  const Dc=ln_norm(p.c,5)*0.10;
+  const Np=edp(p.m,0.3);
+  const Ecore=hrc([Ec*Rd,Vb,Dc],[0.75,0.15,0.10]);
+  const X5=sigmoid_transform(Ecore*Math.sqrt(Np),0.3,8.0);
+  return {X:X5, math:{E_composite:Ec,R_decay:Rd,V_bonus:Vb,D_channel:Dc,N_penalty:Np}};
+}
+function computeP6(p){
+  const raw=hrc([p.seg,p.emp,p.rev,p.tech,p.geo,p.gro,p.f,p.d,p.l],
+    [0.20,0.10,0.10,0.20,0.05,0.10,0.10,0.10,0.05]);
+  const X6=sigmoid_transform(raw,0.70,8.0);
+  return {X:X6, math:{X6_raw:raw}};
+}
+function computeP7(p){
+  const Q=0.5*p.q+0.5*bci(p.n_converted_from_source,p.n_leads_from_source);
+  const X7=hrc([Q,p.p,p.r,p.s],[0.55,0.15,0.10,0.20]);
+  return {X:X7, math:{Q_blended:Q,P_camp:p.p,R_data:p.r,S_dir:p.s}};
+}
+function computeP8(p){
+  if(p.k===1) return {X:1.0, math:{sole_vendor:1.0}};
+  const Nc=edp(p.n,0.18);
+  const W=bci(p.n_wins,p.n_competitive_deals);
+  const Cd=edp(0.5*p.s+0.5*p.c,1.0);
+  const X8=hrc([Nc,W,Cd,p.d],[0.25,0.30,0.20,0.25]);
+  return {X:X8, math:{N_comp:Nc,W_bci:W,Cd,D_diff:p.d}};
+}
+function computeP9(p){
+  const Rten=p.pb*ln_norm(p.rt,36);
+  const Rtrust=hrc([p.es,p.t,p.rc,Math.max(p.nps,0)],[0.30,0.30,0.20,0.20]);
+  const Rneg=edp(p.n,1.5);
+  const X9=Rneg*hrc([Rten,Rtrust],[0.40,0.60]);
+  return {X:X9, math:{R_ten:Rten,R_trust:Rtrust,R_neg:Rneg}};
+}
+function computeP10(p){
+  const Vltv=sigmoid_transform(p.ltv/p.cac,3.0,1.5);
+  const Cs=0.5*p.cs+0.5*bci(p.n_expanded,p.n_similar_accounts);
+  const Vstrat=hrc([p.b,p.m,p.e],[0.30,0.40,0.30]);
+  const Vchurn=edp(p.c,1.2);
+  const X10=Vchurn*hrc([Vltv,Cs,Vstrat],[0.35,0.25,0.40]);
+  return {X:X10, math:{V_ltv:Vltv,Cs_blended:Cs,V_strat:Vstrat,V_churn:Vchurn}};
+}
 
-/* ───────────────── CHOQUET CAPACITY (from notebook) ───────────────── */
-const A=[0.155,0.125,0.200,0.125,0.120,0.060,0.030,0.055,0.055,0.075];
-const AIJ=new Map([
-  ['0,3',0.025],['0,2',0.020],['1,4',0.015],['2,3',0.015],
-  ['0,7',0.015],['8,9',0.010],['4,8',-0.010],['5,6',-0.010],['1,5',-0.005]
-]);
+/* ============================================================
+   CHOQUET INTEGRAL
+   ============================================================ */
+const A_VALS={0:0.155,1:0.125,2:0.200,3:0.125,4:0.120,5:0.060,6:0.030,7:0.055,8:0.055,9:0.075};
+const A_IJ={"0,3":0.025,"0,2":0.020,"1,4":0.015,"2,3":0.015,"7,0":0.015,
+  "8,9":0.010,"4,8":-0.010,"5,6":-0.010,"1,5":-0.005};
 function mu(S){
-  let v=S.reduce((s,i)=>s+A[i],0);
-  AIJ.forEach((co,key)=>{const[i,j]=key.split(',').map(Number);if(S.includes(i)&&S.includes(j))v+=co;});
+  let v=0; S.forEach(i=>v+=A_VALS[i]);
+  for(const key in A_IJ){
+    const [i,j]=key.split(",").map(Number);
+    if(S.has(i)&&S.has(j)) v+=A_IJ[key];
+  }
   return v;
 }
-const MU_N=mu([0,1,2,3,4,5,6,7,8,9]);
-function choquet(scores){
-  const idx=scores.map((_,i)=>i).sort((i,j)=>scores[i]-scores[j]);
-  let r=0;
-  for(let k=0;k<scores.length;k++){
-    const sk=scores[idx[k]], sp=k>0?scores[idx[k-1]]:0;
-    r+=(sk-sp)*mu(idx.slice(k));
+function choquetIntegral(scores){
+  const n=scores.length;
+  const sigma=[...Array(n).keys()].sort((a,b)=>scores[a]-scores[b]);
+  let integral=0;
+  for(let rank=0;rank<n;rank++){
+    const coalition=new Set(sigma.slice(rank));
+    const muv=mu(coalition);
+    const delta = rank===0 ? scores[sigma[rank]] : scores[sigma[rank]]-scores[sigma[rank-1]];
+    integral += delta*muv;
   }
-  return r;
+  return integral;
 }
 
-/* ───────────────── SCORE ENGINE (faithful port of Lead_Score) ───────────────── */
-function compute(s){
-  // X1 — Financial
-  const Br=sigmoid(Math.min(s.p1_b/Math.max(1,s.p1_d),1),0.70,10);
-  const nSim=Math.max(1,s.p1_sim), nConf=clamp(s.p1_conf,0,nSim);
-  const C=0.5*s.p1_c+0.5*bci(nConf,nSim);
-  const F1=edp(s.p1_t,0.25);
-  const X1=hrc([Br,C,F1,s.p1_f2,s.p1_m,s.p1_p],[0.45,0.17,0.12,0.12,0.08,0.06]);
+/* ============================================================
+   MASTER RECOMPUTE
+   ============================================================ */
+const PARAM_NAMES=["Money","Fit","Power","Momentum","Engagement","Company","Source","Competitive","Relationship","Strategic"];
+const COMP_KEYS=["P1","P2","P3","P4","P5","P6","P7","P8","P9","P10"];
+function recompute(){
+  const r=[computeP1(D.p1),computeP2(D.p2),computeP3(D.p3),computeP4(D.p4),computeP5(D.p5),
+           computeP6(D.p6),computeP7(D.p7),computeP8(D.p8),computeP9(D.p9),computeP10(D.p10)];
+  const X=r.map(o=>o.X);
 
-  // X2 — Fit
-  const Ttech=bci(Math.max(0,s.p2_fa),Math.max(1,s.p2_fn));
-  const Fpos=hrc([s.p2_r,s.p2_s,s.p2_p,Ttech],[0.25,0.30,0.20,0.25]);
-  const dissat=s.p2_dc*s.p2_cs;
-  const Fneg=hrc([1-0.4*dissat,1-0.25*s.p2_cr,edp(1-s.p2_c2,3.0)],[0.40,0.25,0.35]);
-  const Uscore=lnNorm(s.p2_u,6);
-  const X2=hrc([Fpos,Fneg,Uscore],[0.45,0.40,0.15]);
+  // gates
+  const g=D.gates.map(x=>x==="t"?0:1).reduce((a,b)=>a*b,1);
+  // modifiers
+  const m=D.modifiers.reduce((a,b)=>a*b,1);
 
-  // X3 — Authority
-  const Ac=s.p3_r*s.p3_d;
-  const Nscore=lnNorm(s.p3_n,5);
-  const Oev=bci(Math.min(s.p3_ns,s.p3_nm),Math.max(1,s.p3_nm));
-  const Ocomb=0.5*s.p3_o+0.5*Oev;
-  const X3=hrc([Ac,Nscore,Ocomb,s.p3_p],[0.30,0.30,0.25,0.15]);
+  // pre-process: sigmoid on indices 3,5,8; clamp
+  const sig=new Set([3,5,8]);
+  const Xf=X.map((x,i)=> sig.has(i)?sigmoid_transform(x,0.50,8.0):x).map(x=>Math.max(0,Math.min(1,x)));
 
-  // X4 — Timeline
-  const Tprime=edp(s.p4_t,0.015);
-  const Utrig=s.p4_t1===1?edp(s.p4_t2,0.01):0;
-  const Pproc=0.5*s.p4_ep+0.5*s.p4_nstep;
-  const X4=hrc([Tprime,Utrig,Pproc,1-s.p4_cp],[0.45,0.15,0.25,0.15]);
+  const Cmu=choquetIntegral(Xf);
+  const muN=mu(new Set([...Array(10).keys()]));
+  const S=100*g*m*(Cmu/muN);
 
-  // X5 — Engagement
-  const caps=[20,10,6,8,15,8,5,3,5];
-  const raw=[s.p5_n1,s.p5_n2,s.p5_n3,s.p5_n4,s.p5_n5,s.p5_n6,s.p5_n7,s.p5_n8,s.p5_n9];
-  const e=raw.map((v,i)=>lnNorm(v,caps[i]));
-  const Ecomp=hrc(e,[0.05,0.10,0.18,0.12,0.08,0.10,0.14,0.18,0.05]);
-  const Rdecay=edp(s.p5_t,0.033);
-  const wk=s.we.slice(0,8);
-  const Vbonus=Math.min(Math.max(0,(ewmaMean(wk,0.85)-mean(wk))/Math.max(mean(wk),0.01)),1)*0.15;
-  const Dchan=lnNorm(s.p5_c,5)*0.10;
-  const Npen=edp(s.p5_m,0.3);
-  const Ecore=hrc([Ecomp*Rdecay,Vbonus,Dchan],[0.75,0.15,0.10]);
-  const X5=sigmoid(Ecore*Math.sqrt(Npen),0.3,8);
-
-  // X6 — Company fit
-  const X6raw=hrc([s.p6_seg,s.p6_emp,s.p6_rev,s.p6_tech,s.p6_geo,s.p6_gro,s.p6_fh,s.p6_dig,s.p6_lang],
-    [0.20,0.10,0.10,0.20,0.05,0.10,0.10,0.10,0.05]);
-  const X6=sigmoid(X6raw,0.70,8);
-
-  // X7 — Source
-  const Q=0.5*s.p7_q+0.5*bci(s.p7_conv,Math.max(1,s.p7_leads));
-  const X7=hrc([Q,s.p7_p,s.p7_r,s.p7_s],[0.55,0.15,0.10,0.20]);
-
-  // X8 — Competitive
-  let X8;
-  if(s.p8_k===1){X8=1.0;}
-  else{
-    const Ncomp=edp(s.p8_n,0.18);
-    const Wbci=bci(s.p8_wins,Math.max(1,s.p8_deals));
-    const Cd=edp(0.5*s.p8_s+0.5*s.p8_c,1.0);
-    X8=hrc([Ncomp,Wbci,Cd,s.p8_d],[0.25,0.30,0.20,0.25]);
-  }
-
-  // X9 — Relationship
-  const Rten=s.p9_pb*lnNorm(s.p9_rt,36);
-  const Rtrust=hrc([s.p9_es,s.p9_t,s.p9_rc,Math.max(s.p9_nps,0)],[0.30,0.30,0.20,0.20]);
-  const Rneg=edp(s.p9_n,1.5);
-  const X9=Rneg*hrc([Rten,Rtrust],[0.40,0.60]);
-
-  // X10 — Strategic
-  const Vltv=sigmoid(Math.max(1,s.p10_ltv)/Math.max(1,s.p10_cac),3.0,1.5);
-  const Cs=0.5*s.p10_cs+0.5*bci(s.p10_ne,Math.max(1,s.p10_sa));
-  const Vstrat=hrc([s.p10_b,s.p10_m,s.p10_e],[0.30,0.40,0.30]);
-  const Vchurn=edp(s.p10_c,1.2);
-  const X10=Vchurn*hrc([Vltv,Cs,Vstrat],[0.35,0.25,0.40]);
-
-  const rawX=[X1,X2,X3,X4,X5,X6,X7,X8,X9,X10].map(v=>clamp(v));
-  // Pre-process: sigmoid on indices 3,5,8
-  const Xfinal=rawX.map((v,i)=>([3,5,8].includes(i)?sigmoid(v,0.50,8):v));
-
-  const Cmu=choquet(Xfinal);
-  const G=s.G1*s.G2*s.G3;
-  const score=clamp(100*G*s.mod*(Cmu/MU_N),0,100);
-  return {rawX,Xfinal,Cmu,G,mod:s.mod,score};
-}
-
-/* ───────────────── UI BUILD ───────────────── */
-const PNAMES=['Financial Qualification','Need & Product Fit','Authority & Decision','Timeline & Urgency',
-  'Engagement Behaviour','Company & Market Fit','Lead Source Quality','Competitive Landscape',
-  'Relationship & Trust','Strategic & Lifetime Value'];
-const COMP_TAGS=['Money','Fit','Power','Momentum','Engage','Company','Source','Edge','Trust','Strategic'];
-const colorFor=v=>v>=0.66?'#10b981':v>=0.33?'#f59e0b':'#ef4444';
-const fmtMoney=v=>'₹'+Number(v).toLocaleString('en-IN');
-
-function buildParams(){
-  const grid=$('params-grid');
-  SCHEMA.forEach(p=>{
-    const card=document.createElement('div'); card.className='pcard';
-    let body='';
-    p.fields.forEach(f=>{
-      if(f.type==='weekly'){
-        let cells='';
-        DEFAULTS.we.forEach((v,i)=>{cells+=`<div class="wc"><label>W${i+1}</label><input type="number" data-we="${i}" value="${state.we[i]}" min="0" max="1" step="0.05"></div>`;});
-        body+=`<div class="field"><div class="field-label">${f.label}</div><div class="field-hint">${f.hint||''}</div><div class="weekly">${cells}</div></div>`;
-      } else if(f.type==='num'){
-        body+=`<div class="field"><div class="field-label">${f.label}</div>${f.hint?`<div class="field-hint">${f.hint}</div>`:''}
-          <div class="num-inline">${f.pre?`<span class="pre">${f.pre}</span>`:''}<input type="number" data-key="${f.k}" value="${state[f.k]}" step="${f.step||1}"></div></div>`;
-      } else {
-        body+=`<div class="field"><div class="field-top"><div><div class="field-label">${f.label}</div>${f.hint?`<div class="field-hint">${f.hint}</div>`:''}</div><span class="field-val" id="v_${f.k}">${state[f.k]}</span></div>
-          <input type="range" data-key="${f.k}" min="${f.min}" max="${f.max}" step="${f.step}" value="${state[f.k]}"></div>`;
-      }
-    });
-    card.innerHTML=`
-      <div class="pcard-head">
-        <div><div class="pcard-id">${p.id} · ${PNAMES[SCHEMA.indexOf(p)]}</div>
-        <div class="pcard-title">${p.title}</div><div class="pcard-q">${p.sub}</div></div>
-        <div class="pcard-score"><div class="v" id="ps_${p.id}">—</div><div class="w">a=${A[SCHEMA.indexOf(p)].toFixed(3)}</div></div>
-      </div>
-      <div class="pcard-body">${body}
-        <div class="math-toggle" data-math="${p.id}">▸ Show the math</div>
-        <div class="math-box" id="math_${p.id}"></div>
-      </div>`;
-    grid.appendChild(card);
+  // per-param Choquet contribution (marginal share of integral)
+  const contrib=Xf.map((_,i)=>{
+    const without = Xf.map((v,j)=> j===i?0:v);
+    const cmuW=choquetIntegral(without);
+    return Math.max(0,(Cmu-cmuW));
   });
+  const cSum=contrib.reduce((a,b)=>a+b,0)||1;
+  const contribScaled=contrib.map(c=> (c/cSum)*S);
+
+  render({X,Xf,r,g,m,S,contribScaled});
 }
 
-/* radar */
-function buildRadarBase(){
-  const svg=$('radar'); const cx=160,cy=140,R=105,N=10;
-  let g='';
-  [0.25,0.5,0.75,1].forEach(r=>{
-    let pts='';
-    for(let i=0;i<N;i++){const a=(-Math.PI/2)+i*2*Math.PI/N; pts+=`${cx+R*r*Math.cos(a)},${cy+R*r*Math.sin(a)} `;}
-    g+=`<polygon points="${pts}" fill="none" stroke="#2a3344" stroke-width="1"/>`;
-  });
-  for(let i=0;i<N;i++){
-    const a=(-Math.PI/2)+i*2*Math.PI/N;
-    g+=`<line x1="${cx}" y1="${cy}" x2="${cx+R*Math.cos(a)}" y2="${cy+R*Math.sin(a)}" stroke="#2a3344" stroke-width="1"/>`;
-    const lx=cx+(R+16)*Math.cos(a), ly=cy+(R+16)*Math.sin(a);
-    g+=`<text x="${lx}" y="${ly}" fill="#9aa7bd" font-size="9" font-weight="700" text-anchor="middle" dominant-baseline="middle">X${i+1}</text>`;
-  }
-  g+=`<polygon id="radar-poly" points="" fill="rgba(99,102,241,.25)" stroke="#6366f1" stroke-width="2"/>`;
-  svg.innerHTML=g;
-}
-function updateRadar(rawX){
-  const cx=160,cy=140,R=105,N=10; let pts='';
-  for(let i=0;i<N;i++){const a=(-Math.PI/2)+i*2*Math.PI/N;const r=R*rawX[i];pts+=`${cx+r*Math.cos(a)},${cy+r*Math.sin(a)} `;}
-  $('radar-poly').setAttribute('points',pts);
-  $('radar-legend').innerHTML=rawX.map((v,i)=>`<div class="rl"><span>X${i+1} ${COMP_TAGS[i]}</span><b>${(v*100).toFixed(0)}%</b></div>`).join('');
-}
+/* ============================================================
+   RENDERING
+   ============================================================ */
+const BANDS=[
+  {min:0,  label:"COLD",        color:"#5b6577"},
+  {min:30, label:"DEVELOPING",  color:"#f5a623"},
+  {min:55, label:"QUALIFIED",   color:"#4f9cff"},
+  {min:75, label:"STRONG",      color:"#22d3a7"},
+  {min:90, label:"EXCEPTIONAL", color:"#a855f7"},
+];
+function bandFor(s){ let b=BANDS[0]; for(const x of BANDS) if(s>=x.min) b=x; return b; }
 
-/* ───────────────── MATH EXPLAINERS ───────────────── */
-function mathHTML(id,s,r){
-  const row=(l,v)=>`<div class="ml"><span>${l}</span><b>${v}</b></div>`;
-  switch(id){
-    case 'X1':return row('Budget ratio σ(min(B/D,1))',sigmoid(Math.min(s.p1_b/Math.max(1,s.p1_d),1),.70,10).toFixed(3))
-      +row('Confirmation (stated·.5 + BCI·.5)',(0.5*s.p1_c+0.5*bci(clamp(s.p1_conf,0,s.p1_sim),Math.max(1,s.p1_sim))).toFixed(3))
-      +row('Fiscal decay e^(−0.25·T)',edp(s.p1_t,0.25).toFixed(3))
-      +row('→ X1 via HRC',r.rawX[0].toFixed(3));
-    case 'X2':return row('Tech coverage BCI(fa,fn)',bci(s.p2_fa,Math.max(1,s.p2_fn)).toFixed(3))
-      +row('Compliance penalty e^(−3·gap)',edp(1-s.p2_c2,3).toFixed(3))
-      +row('→ X2 via nested HRC',r.rawX[1].toFixed(3));
-    case 'X3':return row('Authority R×D',(s.p3_r*s.p3_d).toFixed(3))
-      +row('Stakeholders ln_norm(N,5)',lnNorm(s.p3_n,5).toFixed(3))
-      +row('Support BCI(supp,met)',bci(Math.min(s.p3_ns,s.p3_nm),Math.max(1,s.p3_nm)).toFixed(3))
-      +row('→ X3 via HRC',r.rawX[2].toFixed(3));
-    case 'X4':return row('Timeline e^(−0.015·days)',edp(s.p4_t,0.015).toFixed(3))
-      +row('Trigger urgency',(s.p4_t1?edp(s.p4_t2,0.01):0).toFixed(3))
-      +row('Process maturity',( .5*s.p4_ep+.5*s.p4_nstep).toFixed(3))
-      +row('→ X4 via HRC',r.rawX[3].toFixed(3));
-    case 'X5':return row('Recency decay e^(−0.033·T)',edp(s.p5_t,0.033).toFixed(3))
-      +row('Negative penalty √(e^(−0.3·M))',Math.sqrt(edp(s.p5_m,0.3)).toFixed(3))
-      +row('→ X5 via sigmoid',r.rawX[4].toFixed(3));
-    case 'X6':return row('ICP composite (pre-sigmoid)',hrc([s.p6_seg,s.p6_emp,s.p6_rev,s.p6_tech,s.p6_geo,s.p6_gro,s.p6_fh,s.p6_dig,s.p6_lang],[.2,.1,.1,.2,.05,.1,.1,.1,.05]).toFixed(3))
-      +row('→ X6 σ(raw,0.70,8)',r.rawX[5].toFixed(3));
-    case 'X7':return row('Source quality (stated·.5 + BCI·.5)',(0.5*s.p7_q+0.5*bci(s.p7_conv,Math.max(1,s.p7_leads))).toFixed(3))
-      +row('→ X7 via HRC',r.rawX[6].toFixed(3));
-    case 'X8':return (s.p8_k===1?row('Sole vendor','→ X8 = 1.000'):
-        row('Competitor decay e^(−0.18·N)',edp(s.p8_n,0.18).toFixed(3))
-       +row('Win rate BCI(wins,deals)',bci(s.p8_wins,Math.max(1,s.p8_deals)).toFixed(3))
-       +row('→ X8 via HRC',r.rawX[7].toFixed(3)));
-    case 'X9':return row('Tenure Pb·ln_norm(Rt,36)',(s.p9_pb*lnNorm(s.p9_rt,36)).toFixed(3))
-      +row('Negative penalty e^(−1.5·N)',edp(s.p9_n,1.5).toFixed(3))
-      +row('→ X9',r.rawX[8].toFixed(3));
-    case 'X10':return row('LTV:CAC σ(ratio,3,1.5)',sigmoid(s.p10_ltv/Math.max(1,s.p10_cac),3,1.5).toFixed(3))
-      +row('Churn penalty e^(−1.2·C)',edp(s.p10_c,1.2).toFixed(3))
-      +row('→ X10',r.rawX[9].toFixed(3));
-  }
-  return '';
-}
-
-/* ───────────────── RENDER ───────────────── */
-const ARC_LEN=Math.PI*110; // semicircle length
-function render(){
-  const r=compute(state);
-  const {rawX,G,mod,score}=r;
-
+function render({X,Xf,r,g,m,S,contribScaled}){
   // gauge
-  const frac=score/100, col=colorFor(frac);
-  $('gauge-arc').setAttribute('stroke-dasharray',`${ARC_LEN*frac} 1000`);
-  const ang=-90+frac*180, rad=ang*Math.PI/180;
-  $('gauge-needle').setAttribute('x2',140+88*Math.cos(rad));
-  $('gauge-needle').setAttribute('y2',150+88*Math.sin(rad));
-  $('g-score').textContent=score.toFixed(2); $('g-score').style.color=col;
-  const tier=score>=80?'EXCEPTIONAL':score>=66?'STRONG':score>=45?'QUALIFIED':score>=25?'DEVELOPING':'COLD';
-  const b=$('g-badge'); b.textContent=tier; b.style.background=col+'22'; b.style.color=col;
+  drawGauge(S);
+  const band=bandFor(S);
+  document.getElementById("gaugeScore").textContent=S.toFixed(2);
+  const gb=document.getElementById("gaugeBand");
+  gb.textContent=band.label; gb.style.background=band.color+"33"; gb.style.color=band.color;
+  document.getElementById("bandSub").textContent=band.label;
+  document.getElementById("gateState").textContent=g===1?"PASS":"FAIL";
+  document.getElementById("gateState").style.color=g===1?"var(--good)":"var(--bad)";
+  document.getElementById("modState").textContent=m.toFixed(2);
 
-  // composition (contribution share toward gated/modified score)
-  const contribs=rawX.map((v,i)=>v*A[i]);
-  const totC=contribs.reduce((a,b)=>a+b,0)||1;
-  $('comp-list').innerHTML=rawX.map((v,i)=>{
-    const share=contribs[i]/totC, pts=score*share;
+  // composition bars
+  const maxC=Math.max(...contribScaled,0.001);
+  document.getElementById("compBody").innerHTML=contribScaled.map((c,i)=>{
+    const pct=(c/maxC)*100;
+    const col=BANDS[Math.min(4,Math.floor(Xf[i]*5))].color;
     return `<div class="comp-row">
-      <div><span class="comp-tag">X${i+1} ${COMP_TAGS[i]}</span><span class="comp-sub">${(v*100).toFixed(0)}% · a=${A[i].toFixed(2)}</span></div>
-      <div class="comp-track"><div class="comp-fill" style="width:${(share*100).toFixed(1)}%;background:${colorFor(v)}"></div></div>
-      <div class="comp-num">+${pts.toFixed(2)}</div></div>`;
-  }).join('');
+      <div class="comp-label">${COMP_KEYS[i]} ${PARAM_NAMES[i]}</div>
+      <div class="comp-track"><div class="comp-fill" style="width:${pct}%;background:${col}"></div></div>
+      <div class="comp-val">+${c.toFixed(2)}</div>
+    </div>`;
+  }).join("");
 
   // radar
-  updateRadar(rawX);
+  drawRadar(X);
 
-  // breakdown table
-  $('xtable-body').innerHTML=rawX.map((v,i)=>{
-    const c=colorFor(v), pct=(v*100).toFixed(1), contrib=(v*A[i]*100).toFixed(2);
-    return `<tr><td><span style="color:var(--dim);font-size:10px">X${i+1}</span> ${PNAMES[i]}</td>
-      <td style="color:${c};font-weight:700">${pct}</td>
-      <td style="color:var(--dim)">${A[i].toFixed(3)}</td>
-      <td style="color:${c};font-weight:600">${contrib}</td>
-      <td><div class="xbar"><div class="xbar-fill" style="width:${pct}%;background:${c}"></div></div></td></tr>`;
-  }).join('');
-
-  // per-card scores
-  SCHEMA.forEach((p,i)=>{const el=$('ps_'+p.id);el.textContent=(rawX[i]*100).toFixed(1);el.style.color=colorFor(rawX[i]);
-    const mb=$('math_'+p.id); if(mb.classList.contains('open'))mb.innerHTML=mathHTML(p.id,state,r);});
-
-  // gates UI
-  ['G1','G2','G3'].forEach(g=>{
-    const pass=state[g]===1;
-    $('pill-'+g).textContent=pass?'PASS':'FAIL';
-    $('pill-'+g).className='pill '+(pass?'pass':'fail');
-    $('gate-'+g).classList.toggle('fail',!pass);
+  // per-param score tags + math
+  r.forEach((o,i)=>{
+    const tag=document.getElementById(`score-${i}`);
+    if(tag){ tag.textContent=o.X.toFixed(3); tag.style.color=BANDS[Math.min(4,Math.floor(Math.min(o.X,1)*5))].color; }
+    const mb=document.getElementById(`math-${i}`);
+    if(mb){
+      mb.innerHTML=Object.entries(o.math).map(([k,v])=>
+        `<div class="ml"><span>${k}</span><span>${(typeof v==="number"?v.toFixed(5):v)}</span></div>`).join("");
+    }
   });
-  $('mod-val').textContent=mod.toFixed(2);
-  $('mod-desc').textContent=mod>=0.95?'Minimal friction — clean deal.':mod>=0.8?'Some friction — complex procurement, manageable.':mod>=0.65?'Notable friction — heavy process or legal load.':'Severe friction — execution risk is high.';
 }
 
-/* ───────────────── EVENTS ───────────────── */
-let raf=false;
-function schedule(){if(raf)return;raf=true;requestAnimationFrame(()=>{raf=false;render();});}
-
-document.addEventListener('input',e=>{
-  const t=e.target;
-  if(t.dataset.key){
-    const v=parseFloat(t.value); if(!isNaN(v))state[t.dataset.key]=v;
-    const lbl=$('v_'+t.dataset.key); if(lbl)lbl.textContent=Number.isInteger(v)?v:v.toFixed(2);
-    schedule();
-  } else if(t.dataset.we!==undefined){
-    const v=parseFloat(t.value); state.we[+t.dataset.we]=isNaN(v)?0:v; schedule();
-  } else if(t.classList.contains('gate-input')){
-    state[t.dataset.gate]=t.checked?1:0; schedule();
-  } else if(t.id==='mod'){ state.mod=parseFloat(t.value); schedule(); }
-});
-
-document.addEventListener('click',e=>{
-  const m=e.target.closest('[data-math]');
-  if(m){const id=m.dataset.math;const box=$('math_'+id);box.classList.toggle('open');
-    m.textContent=(box.classList.contains('open')?'▾ Hide':'▸ Show')+' the math';
-    if(box.classList.contains('open'))box.innerHTML=mathHTML(id,state,compute(state));}
-});
-
-function syncInputs(){
-  document.querySelectorAll('[data-key]').forEach(el=>{el.value=state[el.dataset.key];
-    const lbl=$('v_'+el.dataset.key); if(lbl){const v=parseFloat(el.value);lbl.textContent=Number.isInteger(v)?v:v.toFixed(2);}});
-  document.querySelectorAll('[data-we]').forEach(el=>el.value=state.we[+el.dataset.we]);
-  document.querySelectorAll('.gate-input').forEach(el=>el.checked=state[el.dataset.gate]===1);
-  $('mod').value=state.mod;
+/* ---- Gauge canvas ---- */
+function drawGauge(score){
+  const c=document.getElementById("gauge"), ctx=c.getContext("2d");
+  const W=c.width,H=c.height,cx=W/2,cy=H-12,R=130;
+  ctx.clearRect(0,0,W,H);
+  const segs=[[0,30,"#5b6577"],[30,55,"#f5a623"],[55,75,"#4f9cff"],[75,90,"#22d3a7"],[90,100,"#a855f7"]];
+  const max=100;
+  segs.forEach(([a,b,col])=>{
+    const sa=Math.PI+(a/max)*Math.PI, ea=Math.PI+(b/max)*Math.PI;
+    ctx.beginPath(); ctx.arc(cx,cy,R,sa,ea); ctx.lineWidth=20; ctx.strokeStyle=col; ctx.stroke();
+  });
+  // needle
+  const sc=Math.max(0,Math.min(score,max));
+  const ang=Math.PI+(sc/max)*Math.PI;
+  ctx.beginPath();
+  ctx.moveTo(cx,cy);
+  ctx.lineTo(cx+Math.cos(ang)*(R-14), cy+Math.sin(ang)*(R-14));
+  ctx.lineWidth=3; ctx.strokeStyle="#e6ebf2"; ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx,cy,6,0,2*Math.PI); ctx.fillStyle="#e6ebf2"; ctx.fill();
+  // ticks
+  ctx.fillStyle="#8b97a8"; ctx.font="10px Inter"; ctx.textAlign="center";
+  ctx.fillText("0", cx-R, cy+4);
+  ctx.fillText("160", cx+R, cy+4);
 }
-function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1600);}
 
-$('btn-reset').onclick=()=>{state=JSON.parse(JSON.stringify(DEFAULTS));syncInputs();render();toast('Reset to sample scenario');};
-$('btn-rand').onclick=()=>{
-  SCHEMA.forEach(p=>p.fields.forEach(f=>{
-    if(f.type==='range'){const steps=Math.round((f.max-f.min)/f.step);state[f.k]=+(f.min+Math.round(Math.random()*steps)*f.step).toFixed(4);}
-    else if(f.type==='num'){state[f.k]=Math.round((f.step*(2+Math.random()*18)));}
-    else if(f.type==='weekly'){state.we=Array.from({length:8},()=>+(Math.random()).toFixed(2));}
-  }));
-  state.p1_b=Math.round(20000+Math.random()*80000);state.p1_d=Math.round(20000+Math.random()*70000);
-  state.p10_ltv=Math.round(200000+Math.random()*2000000);state.p10_cac=Math.round(50000+Math.random()*400000);
-  syncInputs();render();toast('Randomized scenario');
-};
-$('btn-copy').onclick=()=>{
-  const r=compute(state);
-  const txt=`Lead Score: ${r.score.toFixed(2)}/100\n`+
-    r.rawX.map((v,i)=>`X${i+1} ${PNAMES[i]}: ${(v*100).toFixed(1)}`).join('\n')+
-    `\nGate: ${r.G?'PASS':'FAIL'} · Modifier: ${r.mod}`;
-  navigator.clipboard.writeText(txt).then(()=>toast('Summary copied'));
-};
-$('btn-export').onclick=()=>{
-  const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='lead-scenario.json';a.click();
-  toast('Scenario exported');
-};
-$('file-import').onchange=e=>{
-  const f=e.target.files[0]; if(!f)return; const rd=new FileReader();
-  rd.onload=()=>{try{const obj=JSON.parse(rd.result);Object.assign(state,obj);if(!Array.isArray(state.we))state.we=DEFAULTS.we.slice();syncInputs();render();toast('Scenario imported');}catch{toast('Invalid file');}};
-  rd.readAsText(f);
+/* ---- Radar canvas ---- */
+function drawRadar(X){
+  const c=document.getElementById("radar"), ctx=c.getContext("2d");
+  const W=c.width,H=c.height,cx=W/2,cy=H/2+6,R=110,N=X.length;
+  ctx.clearRect(0,0,W,H);
+  // grid rings
+  for(let ring=1;ring<=4;ring++){
+    ctx.beginPath();
+    for(let i=0;i<=N;i++){
+      const a=-Math.PI/2+(i%N)/N*2*Math.PI;
+      const rr=R*ring/4;
+      const x=cx+Math.cos(a)*rr, y=cy+Math.sin(a)*rr;
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    }
+    ctx.strokeStyle="rgba(255,255,255,.07)"; ctx.lineWidth=1; ctx.stroke();
+  }
+  // spokes + labels
+  ctx.fillStyle="#8b97a8"; ctx.font="9px Inter";
+  for(let i=0;i<N;i++){
+    const a=-Math.PI/2+i/N*2*Math.PI;
+    ctx.beginPath(); ctx.moveTo(cx,cy);
+    ctx.lineTo(cx+Math.cos(a)*R,cy+Math.sin(a)*R);
+    ctx.strokeStyle="rgba(255,255,255,.06)"; ctx.stroke();
+    const lx=cx+Math.cos(a)*(R+14), ly=cy+Math.sin(a)*(R+14);
+    ctx.textAlign="center"; ctx.fillText(COMP_KEYS[i], lx, ly+3);
+  }
+  // data polygon
+  ctx.beginPath();
+  for(let i=0;i<=N;i++){
+    const idx=i%N;
+    const a=-Math.PI/2+idx/N*2*Math.PI;
+    const rr=R*Math.max(0,Math.min(X[idx],1));
+    const x=cx+Math.cos(a)*rr, y=cy+Math.sin(a)*rr;
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.closePath();
+  ctx.fillStyle="rgba(79,156,255,.22)"; ctx.fill();
+  ctx.strokeStyle="#4f9cff"; ctx.lineWidth=2; ctx.stroke();
+  // data points
+  for(let i=0;i<N;i++){
+    const a=-Math.PI/2+i/N*2*Math.PI;
+    const rr=R*Math.max(0,Math.min(X[i],1));
+    ctx.beginPath(); ctx.arc(cx+Math.cos(a)*rr,cy+Math.sin(a)*rr,3,0,2*Math.PI);
+    ctx.fillStyle="#22d3a7"; ctx.fill();
+  }
+}
+
+/* ============================================================
+   UI BUILDERS — field definitions
+   ============================================================ */
+// field spec: [param, key, label, hint, type, opts]
+//  type: 'range01' | 'num' | 'toggle' | 'select'
+const FIELDS={
+  p1:{title:"P1 · Money — Can they pay?", weight:"0.25", fields:[
+    ["b","Budget (₹)","Total budget the buyer can realistically spend.","num"],
+    ["d","Deal value (₹)","Expected contract value of this deal.","num"],
+    ["c","Budget confirmation","Confidence the budget is confirmed & usable.","range01"],
+    ["t","Months to fiscal alignment","How far out the buying cycle sits.","num"],
+    ["f2","Funding security","Stability of the funding source.","range01"],
+    ["m","Multi-year willingness","Openness to contracts beyond one year.","range01"],
+    ["p","Procurement ease","1.0 simple … 0.5 full RFP committee.","range01"],
+    ["n_confirmed_budget","Confirmed-budget deals","Past deals with confirmed budget (evidence).","num"],
+    ["n_similar_deals","Similar deals sampled","Comparable historical deals.","num"],
+  ]},
+  p2:{title:"P2 · Fit — Does our product solve their problem?", weight:"0.20", fields:[
+    ["r","Industry match","Alignment with proven industries.","range01"],
+    ["s","Solution fit","How directly we solve their problem.","range01"],
+    ["p","Problem clarity","How well they articulate the problem.","range01"],
+    ["cs","Current solution exists","0 none · 0.5 partial · 1 full alternative.","range01"],
+    ["d","Dissatisfaction","How unhappy with the status quo.","range01"],
+    ["c","Custom work needed","Extra development/config required.","range01"],
+    ["c2","Compliance fit","0 non-compliant · 0.5 partial · 1 full.","range01"],
+    ["u","Use cases articulated","Distinct articulated use cases.","num"],
+    ["n_features_available","Features available","Required features already supported.","num"],
+    ["n_features_needed","Features needed","Total features expected.","num"],
+  ]},
+  p3:{title:"P3 · Power — Are we talking to the decision-maker?", weight:"0.25", fields:[
+    ["r","Contact seniority","Organizational seniority of main contact.","range01"],
+    ["d","Decision involvement","0 none · 0.5 influencer · 1 final.","range01"],
+    ["n","Stakeholders identified","People involved in approval (cap ~5).","num"],
+    ["o","Org alignment","Internal agreement the priority is real.","range01"],
+    ["p","Access to decision-maker","Quality of access to budget holder.","range01"],
+    ["n_stakeholders_supportive","Supportive stakeholders","Stakeholders backing the deal.","num"],
+    ["n_stakeholders_met","Stakeholders met","Stakeholders actually engaged.","num"],
+  ]},
+  p4:{title:"P4 · Momentum — Is this deal moving forward?", weight:"0.20", fields:[
+    ["t","Days until decision","Expected days until they decide.","num"],
+    ["t1","Trigger event active","A business event forcing a decision.","toggle"],
+    ["t2","Days until trigger deadline","Days until the trigger deadline.","num"],
+    ["ep","Evaluation process maturity","How structured the buying process is.","range01"],
+    ["ns","Next step defined","A clear mutually-agreed next action.","toggle"],
+    ["cp","Competing priorities","0 top priority … 1 heavily distracted.","range01"],
+  ]},
+  p5:{title:"P5 · Engagement — How active are they?", weight:"0.12", fields:[
+    ["n1","Email opens","Channel activity count.","num"],
+    ["n2","Email replies","Channel activity count.","num"],
+    ["n3","Meetings held","Strong buying signal.","num"],
+    ["n4","Calls","Channel activity count.","num"],
+    ["n5","Web sessions","Channel activity count.","num"],
+    ["n6","Downloads","Channel activity count.","num"],
+    ["n7","Pricing page visits","Strong buying signal.","num"],
+    ["n8","Demo requests","Strongest buying signal.","num"],
+    ["n9","Social/community","Channel activity count.","num"],
+    ["t","Days since last interaction","Recency of last meaningful touch.","num"],
+    ["c","Channel diversity","Distinct channels used.","num"],
+    ["m","Negative signals","Unsubscribes, no-shows, etc.","num"],
+  ]},
+  p6:{title:"P6 · Company & Market Fit", weight:"0.06", fields:[
+    ["seg","Segment match","Customer segment alignment.","range01"],
+    ["emp","Employee-size fit","Fit relative to ideal headcount.","range01"],
+    ["rev","Revenue fit","Fit relative to ideal revenue.","range01"],
+    ["tech","Tech-stack compatibility","Technology compatibility.","range01"],
+    ["geo","Geographic alignment","Active service-region alignment.","range01"],
+    ["gro","Growth trajectory","Company growth direction.","range01"],
+    ["f","Financial health","Credit-risk inverse.","range01"],
+    ["d","Digital adoption readiness","Readiness to adopt.","range01"],
+    ["l","Language/culture fit","Language & culture compatibility.","range01"],
+  ]},
+  p7:{title:"P7 · Lead Source Quality", weight:"0.03", fields:[
+    ["q","Source channel quality","Historical channel effectiveness.","range01"],
+    ["p","Campaign/asset quality","Performance of the entry campaign.","range01"],
+    ["r","Data richness at entry","0 email-only … 1 full profile.","range01"],
+    ["s","Inbound vs outbound","0.4 outbound · 1.0 inbound.","range01"],
+    ["n_converted_from_source","Converted from source","Conversions from this source.","num"],
+    ["n_leads_from_source","Leads from source","Total leads from this source.","num"],
+  ]},
+  p8:{title:"P8 · Competitive Landscape", weight:"0.055", fields:[
+    ["k","Sole vendor","We are the only vendor considered.","toggle"],
+    ["n","Competitors in deal","Number of credible competitors.","num"],
+    ["s","Incumbent strength","How entrenched the current vendor is.","range01"],
+    ["d","Differentiation","How clearly we stand apart.","range01"],
+    ["c","Switching cost","0 trivial … 1 massive.","range01"],
+    ["n_wins","Wins in sample","Wins within comparable history.","num"],
+    ["n_competitive_deals","Competitive deals sampled","Historical competitive deals (>5).","num"],
+  ]},
+  p9:{title:"P9 · Relationship & Trust Equity", weight:"0.055", fields:[
+    ["pb","Previous relationship","0 net-new · 0.5 lapsed · 1 active.","range01"],
+    ["rt","Relationship tenure (months)","Tenure of the relationship.","num"],
+    ["nps","Sentiment (NPS)","-1 detractor … 0 passive … 1 promoter.","range11"],
+    ["es","Executive sponsor","0 none · 0.5 acquaintance · 1 strong.","range01"],
+    ["t","Trust indicators","Transparency & collaboration signals.","range01"],
+    ["rc","Reference customer","Relevant success story available.","range01"],
+    ["n","Negative experience","0 none · 0.5 minor · 1 serious.","range01"],
+  ]},
+  p10:{title:"P10 · Strategic & Lifetime Value", weight:"0.075", fields:[
+    ["ltv","Lifetime value (₹)","Estimated lifetime value.","num"],
+    ["cac","Acquisition cost (₹)","Customer acquisition cost.","num"],
+    ["cs","Cross-sell opportunity","Up-sell potential after purchase.","range01"],
+    ["b","Brand value","Reputational benefit of winning.","range01"],
+    ["m","Market expansion","0 no · 0.5 strengthen · 1 new market.","range01"],
+    ["e","Expansion probability","Likelihood the account grows.","range01"],
+    ["c","Churn risk","Predicted cancellation probability.","range01"],
+    ["n_expanded","Expanded accounts","Similar accounts that expanded.","num"],
+    ["n_similar_accounts","Similar accounts","Comparable accounts (evidence).","num"],
+  ]},
 };
 
-/* INIT */
-buildParams(); buildRadarBase(); syncInputs(); render();
-})();
+const GATE_DEFS=[
+  ["G1","Capital","Realistic financial ability & funding path exist."],
+  ["G2","Communication","Contact has not opted out / sent cease-and-desist."],
+  ["G3","Pipeline","Not a duplicate or existing active customer."],
+  ["G4","Sanctions","Not on a sanctions / compliance blacklist."],
+  ["G5","Geographic","Region we can legally sell to & support."],
+  ["G6","Industry","Industry our policy permits serving."],
+  ["G7","Technical","Product can technically serve the core need."],
+];
+const MOD_DEFS=[
+  ["M1","Data reliability","Are key deal details confirmed?",0.5,1.0],
+  ["M2","Sales capacity","Bandwidth & right rep available?",0.5,1.0],
+  ["M3","Legal complexity","Severity of non-standard contract terms.",0.6,1.0],
+  ["M4","Payment risk","Currency / payment-cycle / market risk.",0.7,1.0],
+  ["M5","Execution complexity","Multi-location, customisation, approvals.",0.6,1.0],
+];
+
+function buildGates(){
+  document.getElementById("gateGrid").innerHTML=GATE_DEFS.map((g,i)=>{
+    const pass=D.gates[i]!=="t";
+    return `<div class="gate" onclick="toggleGate(${i})">
+      <div class="g-top"><span class="g-name">${g[0]} · ${g[1]}</span>
+      <span class="pill ${pass?'pass':'fail'}" id="gate-pill-${i}">${pass?'PASS':'FAIL'}</span></div>
+      <div class="g-desc">${g[2]}</div></div>`;
+  }).join("");
+}
+function toggleGate(i){
+  D.gates[i]=D.gates[i]==="t"?"f":"t";
+  const pass=D.gates[i]!=="t";
+  const p=document.getElementById(`gate-pill-${i}`);
+  p.className=`pill ${pass?'pass':'fail'}`; p.textContent=pass?'PASS':'FAIL';
+  recompute();
+}
+
+function buildMods(){
+  document.getElementById("modBody").innerHTML=MOD_DEFS.map((m,i)=>{
+    return `<div class="mod-row" title="${m[2]}">
+      <label>${m[0]} · ${m[1]}</label>
+      <input type="range" min="${m[3]}" max="${m[4]}" step="0.01" value="${D.modifiers[i]}"
+        oninput="setMod(${i},this.value)">
+      <span class="mv" id="mod-v-${i}">${D.modifiers[i].toFixed(2)}</span>
+    </div>`;
+  }).join("");
+}
+function setMod(i,v){
+  D.modifiers[i]=parseFloat(v);
+  document.getElementById(`mod-v-${i}`).textContent=parseFloat(v).toFixed(2);
+  recompute();
+}
+
+function buildParams(){
+  let html="";
+  Object.keys(FIELDS).forEach((pk,pi)=>{
+    const spec=FIELDS[pk];
+    const fieldsHtml=spec.fields.map(f=>renderField(pk,f)).join("");
+    html+=`<div class="param" id="param-${pi}">
+      <div class="param-head" onclick="document.getElementById('param-${pi}').classList.toggle('open')">
+        <div class="param-title">${spec.title}</div>
+        <div class="param-meta">
+          <span class="weight-tag">WEIGHT ${spec.weight}</span>
+          <span class="score-tag" id="score-${pi}">—</span>
+          <span class="chev">▸</span>
+        </div>
+      </div>
+      <div class="param-body">
+        <div class="field-grid">${fieldsHtml}</div>
+        <div class="math-toggle" onclick="document.getElementById('math-${pi}').classList.toggle('show')">▸ Show the math</div>
+        <div class="math-box" id="math-${pi}"></div>
+      </div>
+    </div>`;
+  });
+  document.getElementById("paramContainer").innerHTML=html;
+}
+function renderField(pk, f){
+  const [key,label,hint,type]=f;
+  const val=D[pk][key];
+  if(type==="toggle"){
+    const on=val===1;
+    return `<div class="field"><label>${label}</label>
+      <div class="toggle-row">
+        <label class="switch"><input type="checkbox" ${on?'checked':''}
+          onchange="setVal('${pk}','${key}',this.checked?1:0)"><span class="slider-tg"></span></label>
+        <span class="hint">${hint}</span>
+      </div></div>`;
+  }
+  if(type==="num"){
+    return `<div class="field"><label>${label}</label>
+      <input type="number" value="${val}" step="any" oninput="setVal('${pk}','${key}',parseFloat(this.value))">
+      <span class="hint">${hint}</span></div>`;
+  }
+  // range01 / range11
+  const min=type==="range11"?-1:0;
+  return `<div class="field"><label>${label}<span class="lv" id="lv-${pk}-${key}">${(+val).toFixed(2)}</span></label>
+    <input type="range" min="${min}" max="1" step="0.01" value="${val}"
+      oninput="setVal('${pk}','${key}',parseFloat(this.value)); document.getElementById('lv-${pk}-${key}').textContent=parseFloat(this.value).toFixed(2)">
+    <span class="hint">${hint}</span></div>`;
+}
+function setVal(pk,key,v){
+  if(isNaN(v)) v=0;
+  D[pk][key]=v;
+  recompute();
+}
+
+/* ============================================================
+   TOOLBAR ACTIONS
+   ============================================================ */
+function toast(msg){
+  const t=document.getElementById("toast");
+  t.textContent=msg; t.classList.add("show");
+  setTimeout(()=>t.classList.remove("show"),1800);
+}
+function resetSample(){
+  D=JSON.parse(JSON.stringify(SAMPLE));
+  rebuildAll(); toast("Reset to sample scenario");
+}
+function randomize(){
+  for(const pk in FIELDS){
+    FIELDS[pk].fields.forEach(([key,,,type])=>{
+      if(type==="range01") D[pk][key]=+(Math.random()).toFixed(2);
+      else if(type==="range11") D[pk][key]=+(Math.random()*2-1).toFixed(2);
+      else if(type==="toggle") D[pk][key]=Math.random()<0.5?0:1;
+      else if(type==="num"){
+        const cur=D[pk][key];
+        if(cur>1000) D[pk][key]=Math.round((Math.random()*1500000+50000));
+        else D[pk][key]=Math.round(Math.random()*25);
+      }
+    });
+  }
+  D.modifiers=D.modifiers.map((_,i)=>+(Math.random()*(1-MOD_DEFS[i][3])+MOD_DEFS[i][3]).toFixed(2));
+  rebuildAll(); toast("Randomized scenario");
+}
+function rebuildAll(){ buildGates(); buildMods(); buildParams(); recompute(); }
+function copySummary(){
+  const r=[computeP1(D.p1),computeP2(D.p2),computeP3(D.p3),computeP4(D.p4),computeP5(D.p5),
+           computeP6(D.p6),computeP7(D.p7),computeP8(D.p8),computeP9(D.p9),computeP10(D.p10)];
+  const g=D.gates.map(x=>x==="t"?0:1).reduce((a,b)=>a*b,1);
+  const m=D.modifiers.reduce((a,b)=>a*b,1);
+  const sig=new Set([3,5,8]);
+  const Xf=r.map((o,i)=> sig.has(i)?sigmoid_transform(o.X,0.50,8.0):o.X).map(x=>Math.max(0,Math.min(1,x)));
+  const Cmu=choquetIntegral(Xf), muN=mu(new Set([...Array(10).keys()]));
+  const S=100*g*m*(Cmu/muN);
+  let txt=`LEAD SCORE: ${S.toFixed(2)} / 100  (${bandFor(S).label})\n`;
+  txt+=`Gates: ${g===1?'PASS':'FAIL'} | Modifier M=${m.toFixed(3)}\n\n`;
+  r.forEach((o,i)=> txt+=`X${i+1} ${PARAM_NAMES[i]}: ${o.X.toFixed(4)}\n`);
+  navigator.clipboard.writeText(txt).then(()=>toast("Summary copied to clipboard"));
+}
+function exportScenario(){
+  const blob=new Blob([JSON.stringify(D,null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob); a.download="lead-scenario.json"; a.click();
+  toast("Scenario exported");
+}
+function importScenario(e){
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const obj=JSON.parse(reader.result);
+      D=Object.assign(JSON.parse(JSON.stringify(SAMPLE)),obj);
+      rebuildAll(); toast("Scenario imported");
+    }catch(err){ toast("Invalid scenario file"); }
+  };
+  reader.readAsText(file);
+  e.target.value="";
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+rebuildAll();
+// open first param by default
+document.getElementById("param-0").classList.add("open");
 </script>
 </body>
 </html>
