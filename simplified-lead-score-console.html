@@ -635,12 +635,19 @@ details[open] > .trace-summary::before{ transform:rotate(90deg); }
   .field-grid{ grid-template-columns:1fr; }
 }
 @media (max-width:560px){
-  .shell{ padding:16px 14px 70px; }
-  .console-header{ flex-direction:column; }
+  .shell{ padding:12px 12px 70px; }
+  .console-header{ flex-direction:column; align-items: stretch; gap: 14px; margin-bottom: 20px; }
+  .header-actions { justify-content: flex-start; }
+  .header-actions .btn { flex: 1 1 calc(50% - 8px); justify-content: center; }
+  .hero{ padding: 20px 16px; gap: 20px; }
   .gates-row{ grid-template-columns:1fr; }
-  .module-header{ flex-wrap:wrap; }
-  .module-meta{ width:100%; justify-content:space-between; order:3; margin-top:4px; }
+  .gates-panel { padding: 18px 16px; }
+  .module-header{ flex-wrap:wrap; padding: 14px 16px; }
+  .module-meta{ width:100%; justify-content:space-between; order:3; margin-top:8px; }
+  .module-body { padding: 16px; }
+  .card { padding: 18px 16px; }
   .console-header h1{ font-size:22px; }
+  .toggle-row { justify-content: space-between; }
 }
 
 </style>

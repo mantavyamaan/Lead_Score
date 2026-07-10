@@ -168,6 +168,22 @@
   .formula-strip { background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; font-family: ui-monospace, monospace; font-size: 12px; color: #b8c4d6; margin-bottom: 14px; }
   .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--panel-2); border: 1px solid var(--accent); padding: 10px 18px; border-radius: 10px; font-size: 13px; opacity: 0; pointer-events: none; transition: .25s; z-index: 100; }
   .toast.show { opacity: 1; bottom: 34px; }
+
+  /* Mobile Enhancements */
+  @media (max-width: 768px) {
+    header.app { padding: 18px 20px; }
+    .layout { padding: 16px 20px; gap: 16px; }
+    .gate-grid { grid-template-columns: 1fr; }
+    .param-head { flex-direction: column; align-items: flex-start; gap: 12px; }
+    .param-meta { width: 100%; justify-content: space-between; gap: 10px; }
+    .card-head { flex-wrap: wrap; }
+    .modifier-card .mod-row { flex-wrap: wrap; }
+    .modifier-card .mod-row label { width: 100%; margin-bottom: 6px; }
+    .modifier-card .mod-row input { flex: 1; min-width: 150px; }
+    canvas { max-width: 100%; height: auto; }
+    .toolbar { justify-content: flex-start; }
+    .btn { flex: 1 1 calc(50% - 10px); justify-content: center; }
+  }
 </style>
 </head>
 <body>
